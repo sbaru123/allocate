@@ -75,7 +75,7 @@ export default function Signup() {
                 : 'bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
-            I have space to rent
+            Nah
           </button>
         </div>
 
