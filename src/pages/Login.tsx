@@ -14,7 +14,7 @@ export default function Login() {
     setError('')
     setLoading(true)
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
       setError(authError.message)
@@ -22,12 +22,7 @@ export default function Login() {
       return
     }
 
-    const role = data.user?.user_metadata?.role
-    if (role === 'host') {
-      navigate('/host/dashboard')
-    } else {
-      navigate('/renter/dashboard')
-    }
+    navigate('/')
   }
 
   return (
@@ -35,7 +30,7 @@ export default function Login() {
       <div className='w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8'>
         <div className='mb-6 text-center'>
           <h1 className='text-2xl font-bold text-gray-900'>Welcome back</h1>
-          <p className='text-sm text-gray-500 mt-1'>Sign in to your Terp Storage account</p>
+          <p className='text-sm text-gray-500 mt-1'>Sign in to your Terp Budget account</p>
         </div>
 
         <form onSubmit={handleSubmit} className='space-y-4'>
@@ -46,7 +41,7 @@ export default function Login() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
               placeholder='you@example.com'
             />
           </div>
@@ -58,7 +53,7 @@ export default function Login() {
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
               placeholder='••••••••'
             />
           </div>
@@ -72,7 +67,7 @@ export default function Login() {
           <button
             type='submit'
             disabled={loading}
-            className='w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-sm transition-colors'
+            className='w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-sm transition-colors'
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
@@ -80,7 +75,7 @@ export default function Login() {
 
         <p className='text-center text-sm text-gray-500 mt-6'>
           Don&apos;t have an account?{' '}
-          <Link to='/signup' className='text-red-600 font-medium hover:underline'>
+          <Link to='/signup' className='text-green-600 font-medium hover:underline'>
             Sign up
           </Link>
         </p>

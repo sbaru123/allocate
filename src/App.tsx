@@ -1,20 +1,16 @@
 import { Routes, Route } from 'react-router-dom'
-import Home from '@/pages/Home'
-import Browse from '@/pages/Browse'
+import Dashboard from '@/pages/Dashboard'
+import History from '@/pages/History'
 import Login from '@/pages/Login'
 import Signup from '@/pages/Signup'
-import Listings from '@/pages/Listings'
 
-function App() {
+export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/browse" element={<Browse />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/listings" element={<Listings />} />
+      <Route path='/' element={<Dashboard />} />
+      <Route path='/history' element={<History />} />
+      <Route path='/login' element={<Login />} />
+      <Route path='/signup' element={<Signup />} />
     </Routes>
   )
 }
-
-export default App
