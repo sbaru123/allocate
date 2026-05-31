@@ -68,7 +68,7 @@ export default function History() {
     <div className='min-h-screen bg-gray-50'>
       <nav className='bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3'>
         <Link to='/' className='text-gray-400 hover:text-gray-700 text-sm'>← Back</Link>
-        <span className='font-bold text-green-700'>History</span>
+        <span className='font-bold text-sky-700 tracking-tight'>History</span>
       </nav>
 
       <div className='max-w-xl mx-auto px-4 py-6 space-y-4'>
@@ -77,7 +77,7 @@ export default function History() {
           <button
             onClick={() => setFilter('all')}
             className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
-              filter === 'all' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              filter === 'all' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             }`}
           >
             All
@@ -87,7 +87,7 @@ export default function History() {
               key={cat.value}
               onClick={() => setFilter(cat.value)}
               className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
-                filter === cat.value ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                filter === cat.value ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
               }`}
             >
               {cat.label}

@@ -48,7 +48,7 @@ export default function Signup() {
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
               placeholder='Jane Smith'
             />
           </div>
@@ -60,7 +60,7 @@ export default function Signup() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
               placeholder='you@example.com'
             />
           </div>
@@ -73,7 +73,7 @@ export default function Signup() {
               minLength={6}
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
               placeholder='At least 6 characters'
             />
           </div>
@@ -87,7 +87,7 @@ export default function Signup() {
           <button
             type='submit'
             disabled={loading}
-            className='w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-sm transition-colors'
+            className='w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-sm transition-colors'
           >
             {loading ? 'Creating account...' : 'Create account'}
           </button>
@@ -95,7 +95,7 @@ export default function Signup() {
 
         <p className='text-center text-sm text-gray-500 mt-6'>
           Already have an account?{' '}
-          <Link to='/login' className='text-green-600 font-medium hover:underline'>
+          <Link to='/login' className='text-sky-600 font-medium hover:underline'>
             Sign in
           </Link>
         </p>

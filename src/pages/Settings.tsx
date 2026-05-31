@@ -94,7 +94,7 @@ export default function Settings() {
     <div className='min-h-screen bg-gray-50'>
       <nav className='bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3'>
         <Link to='/' className='text-gray-400 hover:text-gray-700 text-sm'>← Back</Link>
-        <span className='font-bold text-green-700'>Settings</span>
+        <span className='font-bold text-sky-700 tracking-tight'>Settings</span>
       </nav>
 
       <div className='max-w-xl mx-auto px-4 py-6 space-y-5'>
@@ -113,13 +113,13 @@ export default function Settings() {
               required
               value={weeklyLimit}
               onChange={e => setWeeklyLimit(e.target.value)}
-              className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
               placeholder='e.g. 200'
             />
             <button
               type='submit'
               disabled={savingBudget}
-              className='bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors'
+              className='bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors'
             >
               {budgetSaved ? 'Saved!' : 'Save'}
             </button>
@@ -141,21 +141,21 @@ export default function Settings() {
                 required
                 value={paycheckAmount}
                 onChange={e => setPaycheckAmount(e.target.value)}
-                className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+                className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 placeholder='Amount ($)'
               />
               <input
                 type='text'
                 value={paycheckNote}
                 onChange={e => setPaycheckNote(e.target.value)}
-                className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+                className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 placeholder='Note (e.g. Week 1)'
               />
             </div>
             <button
               type='submit'
               disabled={addingPaycheck}
-              className='w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors'
+              className='w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors'
             >
               {addingPaycheck ? 'Adding...' : 'Add paycheck'}
             </button>

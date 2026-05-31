@@ -136,7 +136,7 @@ export default function Dashboard() {
     <div className='min-h-screen bg-gray-50'>
       {/* Nav */}
       <nav className='bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between'>
-        <span className='font-bold text-green-700 text-lg'>Terp Budget</span>
+        <span className='font-bold text-sky-700 text-lg tracking-tight'>Terp Budget</span>
         <div className='flex items-center gap-4'>
           <Link to='/history' className='text-sm text-gray-500 hover:text-gray-800'>History</Link>
           <Link to='/settings' className='text-sm text-gray-500 hover:text-gray-800'>Settings</Link>
@@ -145,15 +145,12 @@ export default function Dashboard() {
       </nav>
 
       <div className='max-w-xl mx-auto px-4 py-6 space-y-4'>
-        {/* Greeting */}
         <div>
           <h1 className='text-xl font-bold text-gray-900'>
-            {userName ? `Hey, ${userName.split(' ')[0]} 👋` : 'Hey 👋'}
+            {userName ? `Hello, ${userName.split(' ')[0]}` : 'Hello there!'}
           </h1>
           <p className='text-sm text-gray-500'>Here's your week so far.</p>
         </div>
-
-        {/* Weekly budget card */}
         <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
           <div className='flex justify-between items-start mb-3'>
             <div>
@@ -176,7 +173,7 @@ export default function Dashboard() {
           {weeklyLimit > 0 && (
             <div className='w-full bg-gray-100 rounded-full h-2'>
               <div
-                className={`h-2 rounded-full transition-all ${progress > 90 ? 'bg-red-500' : 'bg-green-500'}`}
+                className={`h-2 rounded-full transition-all ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -184,7 +181,7 @@ export default function Dashboard() {
 
           {weeklyLimit === 0 && (
             <p className='text-xs text-gray-400'>
-              <Link to='/settings' className='text-green-600 hover:underline'>Set a weekly budget</Link> to track your progress.
+              <Link to='/settings' className='text-sky-600 hover:underline'>Set a weekly budget</Link> to track your progress.
             </p>
           )}
         </div>
@@ -194,7 +191,7 @@ export default function Dashboard() {
           <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex justify-between items-center'>
             <div>
               <p className='text-xs text-gray-500 uppercase tracking-wide'>Net balance</p>
-              <p className={`text-2xl font-bold ${netBalance < 0 ? 'text-red-600' : 'text-green-700'}`}>
+              <p className={`text-2xl font-bold ${netBalance < 0 ? 'text-red-500' : 'text-sky-700'}`}>
                 ${netBalance.toFixed(2)}
               </p>
             </div>
@@ -223,7 +220,7 @@ export default function Dashboard() {
         <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
           <div className='flex justify-between items-center mb-3'>
             <p className='text-sm font-semibold text-gray-700'>Recent expenses</p>
-            <Link to='/history' className='text-xs text-green-600 hover:underline'>See all</Link>
+            <Link to='/history' className='text-xs text-sky-600 hover:underline'>See all</Link>
           </div>
           {expenses.length === 0 ? (
             <p className='text-sm text-gray-400'>No expenses logged this week yet.</p>
@@ -250,7 +247,7 @@ export default function Dashboard() {
       {/* Quick add button */}
       <button
         onClick={() => setShowForm(true)}
-        className='fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white rounded-full w-14 h-14 text-2xl shadow-lg flex items-center justify-center transition-colors'
+        className='fixed bottom-6 right-6 bg-sky-600 hover:bg-sky-700 text-white rounded-full w-14 h-14 text-2xl shadow-lg shadow-sky-200 flex items-center justify-center transition-all hover:scale-105'
       >
         +
       </button>
@@ -271,7 +268,7 @@ export default function Dashboard() {
                   autoFocus
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
-                  className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                   placeholder='0.00'
                 />
               </div>
@@ -285,7 +282,7 @@ export default function Dashboard() {
                       onClick={() => setCategory(cat.value)}
                       className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                         category === cat.value
-                          ? 'border-green-500 bg-green-50 text-green-700'
+                          ? 'border-sky-400 bg-sky-50 text-sky-700'
                           : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
                     >
@@ -300,7 +297,7 @@ export default function Dashboard() {
                   type='text'
                   value={note}
                   onChange={e => setNote(e.target.value)}
-                  className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                   placeholder='e.g. Chipotle, Metro card...'
                 />
               </div>
@@ -315,7 +312,7 @@ export default function Dashboard() {
                 <button
                   type='submit'
                   disabled={submitting}
-                  className='flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors'
+                  className='flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors'
                 >
                   {submitting ? 'Saving...' : 'Add expense'}
                 </button>

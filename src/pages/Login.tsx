@@ -41,7 +41,7 @@ export default function Login() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
               placeholder='you@example.com'
             />
           </div>
@@ -53,7 +53,7 @@ export default function Login() {
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+              className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
               placeholder='••••••••'
             />
           </div>
@@ -67,7 +67,7 @@ export default function Login() {
           <button
             type='submit'
             disabled={loading}
-            className='w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-sm transition-colors'
+            className='w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-sm transition-colors'
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
@@ -75,7 +75,7 @@ export default function Login() {
 
         <p className='text-center text-sm text-gray-500 mt-6'>
           Don&apos;t have an account?{' '}
-          <Link to='/signup' className='text-green-600 font-medium hover:underline'>
+          <Link to='/signup' className='text-sky-600 font-medium hover:underline'>
             Sign up
           </Link>
         </p>
