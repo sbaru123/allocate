@@ -254,8 +254,8 @@ export default function Dashboard() {
 
       {/* Quick add modal */}
       {showForm && (
-        <div className='fixed inset-0 bg-black/40 flex items-end justify-center z-50' onClick={() => setShowForm(false)}>
-          <div className='bg-white w-full max-w-md rounded-t-2xl p-6' onClick={e => e.stopPropagation()}>
+        <div className='fixed inset-0 bg-black/40 flex items-center justify-center z-50' onClick={() => setShowForm(false)}>
+          <div className='bg-white w-full max-w-md rounded-2xl p-6' onClick={e => e.stopPropagation()}>
             <h2 className='text-lg font-bold text-gray-900 mb-4'>Log an expense</h2>
             <form onSubmit={handleAddExpense} className='space-y-4'>
               <div>
