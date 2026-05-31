@@ -22,7 +22,7 @@ export default function Login() {
       return
     }
 
-    navigate('/')
+    navigate('/dashboard')
   }
 
   return (
