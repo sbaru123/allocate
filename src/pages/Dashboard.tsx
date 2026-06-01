@@ -139,7 +139,7 @@ export default function Dashboard() {
         <span className='font-bold text-sky-700 text-lg tracking-tight'>Terp Budget</span>
         <div className='flex items-center gap-4'>
           <Link to='/history' className='text-sm text-gray-500 hover:text-gray-800'>History</Link>
-          <Link to='/settings' className='text-sm text-gray-500 hover:text-gray-800'>Settings</Link>
+          <Link to='/paycheck' className='text-sm text-gray-500 hover:text-gray-800'>Add Paycheck</Link>
           <button onClick={handleSignOut} className='text-sm text-gray-400 hover:text-gray-700'>Sign out</button>
         </div>
       </nav>
