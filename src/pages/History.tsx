@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
 type Category = 'food' | 'transport' | 'entertainment' | 'housing' | 'other'
@@ -66,12 +67,14 @@ export default function History() {
 
   return (
     <div className='min-h-screen bg-gray-50'>
-      <nav className='bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3'>
-        <Link to='/dashboard' className='text-gray-400 hover:text-gray-700 text-sm'>← Back</Link>
-        <span className='font-bold text-sky-700 tracking-tight'>History</span>
-      </nav>
+      <Sidebar />
 
-      <div className='max-w-xl mx-auto px-4 py-6 space-y-4'>
+      <main className='ml-56 max-w-xl px-4 py-6 space-y-4'>
+        <div>
+          <h1 className='text-xl font-bold text-gray-900'>History</h1>
+          <p className='text-sm text-gray-500'>Review and filter your logged expenses.</p>
+        </div>
+
         {/* Category filter */}
         <div className='flex gap-2 overflow-x-auto pb-1'>
           <button
@@ -130,7 +133,7 @@ export default function History() {
             </div>
           </div>
         ))}
-      </div>
+      </main>
     </div>
   )
 }

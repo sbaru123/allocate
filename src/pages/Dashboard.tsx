@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
 type Category = 'food' | 'transport' | 'entertainment' | 'housing' | 'other'
@@ -114,11 +115,6 @@ export default function Dashboard() {
     setSubmitting(false)
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    navigate('/login')
-  }
-
   const weeklyTotal = expenses.reduce((sum, e) => sum + e.amount, 0)
   const weeklyLimit = budget?.weekly_limit ?? 0
   const remaining = weeklyLimit - weeklyTotal
@@ -134,17 +130,9 @@ export default function Dashboard() {
 
   return (
     <div className='min-h-screen bg-gray-50'>
-      {/* Nav */}
-      <nav className='bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between'>
-        <span className='font-bold text-sky-700 text-lg tracking-tight'>Terp Budget</span>
-        <div className='flex items-center gap-4'>
-          <Link to='/history' className='text-sm text-gray-500 hover:text-gray-800'>History</Link>
-          <Link to='/paycheck' className='text-sm text-gray-500 hover:text-gray-800'>Add Paycheck</Link>
-          <button onClick={handleSignOut} className='text-sm text-gray-400 hover:text-gray-700'>Sign out</button>
-        </div>
-      </nav>
+      <Sidebar />
 
-      <div className='max-w-xl mx-auto px-4 py-6 space-y-4'>
+      <main className='ml-56 max-w-xl px-4 py-6 space-y-4'>
         <div>
           <h1 className='text-xl font-bold text-gray-900'>
             {userName ? `Hello, ${userName.split(' ')[0]}` : 'Hello there!'}
@@ -181,7 +169,7 @@ export default function Dashboard() {
 
           {weeklyLimit === 0 && (
             <p className='text-xs text-gray-400'>
-              <Link to='/settings' className='text-sky-600 hover:underline'>Set a weekly budget</Link> to track your progress.
+              <Link to='/paycheck' className='text-sky-600 hover:underline'>Set a weekly budget</Link> to track your progress.
             </p>
           )}
         </div>
@@ -242,7 +230,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div>
+      </main>
 
       {/* Quick add button */}
       <button
