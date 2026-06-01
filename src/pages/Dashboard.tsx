@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
@@ -25,11 +25,60 @@ type Budget = {
   weekly_limit: number
 }
 
+type Period = 'week' | 'month'
+
+function getPeriodRange(period: Period, anchorDate: Date) {
+  if (period === 'month') {
+    const start = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1)
+    const end = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1)
+    return { start, end }
+  }
+
+  const start = new Date(anchorDate)
+  const day = start.getDay()
+  const diff = start.getDate() - day + (day === 0 ? -6 : 1)
+  start.setHours(0, 0, 0, 0)
+  start.setDate(diff)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 7)
+  return { start, end }
+}
+
+function formatPeriodLabel(period: Period, start: Date, end: Date) {
+  if (period === 'month') {
+    return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
+
+  const weekEnd = new Date(end)
+  weekEnd.setDate(end.getDate() - 1)
+
+  const startLabel = start.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  const endLabel = weekEnd.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+
+  return `${startLabel} - ${endLabel}`
+}
+
+function getDaysInPeriod(period: Period, start: Date) {
+  if (period === 'week') return 7
+  return new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budget, setBudget] = useState<Budget | null>(null)
   const [totalIncome, setTotalIncome] = useState(0)
+  const [period, setPeriod] = useState<Period>('week')
+  const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<Category>('food')
@@ -37,32 +86,19 @@ export default function Dashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [userName, setUserName] = useState('')
 
-  useEffect(function () {
-    checkAuth()
-    fetchData()
-  }, [])
-
-  async function checkAuth() {
-    const { data } = await supabase.auth.getUser()
-    if (!data.user) {
-      navigate('/login')
-      return
-    }
-    setUserName(data.user.user_metadata?.name ?? '')
-  }
-
-  async function fetchData() {
+  const fetchData = useCallback(async function () {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const weekStart = getWeekStart()
+    const { start, end } = getPeriodRange(period, anchorDate)
 
     const [expensesRes, budgetRes, paychecksRes] = await Promise.all([
       supabase
         .from('expenses')
         .select('*')
         .eq('user_id', user.id)
-        .gte('created_at', weekStart.toISOString())
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString())
         .order('created_at', { ascending: false }),
       supabase
         .from('budgets')
@@ -72,7 +108,9 @@ export default function Dashboard() {
       supabase
         .from('paychecks')
         .select('amount')
-        .eq('user_id', user.id),
+        .eq('user_id', user.id)
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString()),
     ])
 
     if (expensesRes.data) setExpenses(expensesRes.data)
@@ -81,13 +119,37 @@ export default function Dashboard() {
       const total = paychecksRes.data.reduce((sum, p) => sum + p.amount, 0)
       setTotalIncome(total)
     }
+  }, [period, anchorDate])
+
+  useEffect(function () {
+    async function loadDashboard() {
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) {
+        navigate('/login')
+        return
+      }
+
+      setUserName(data.user.user_metadata?.name ?? '')
+      fetchData()
+    }
+
+    loadDashboard()
+  }, [navigate, fetchData])
+
+  function movePeriod(direction: -1 | 1) {
+    setAnchorDate(prev => {
+      const next = new Date(prev)
+      if (period === 'week') {
+        next.setDate(prev.getDate() + direction * 7)
+      } else {
+        next.setMonth(prev.getMonth() + direction)
+      }
+      return next
+    })
   }
 
-  function getWeekStart() {
-    const now = new Date()
-    const day = now.getDay()
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-    return new Date(now.setDate(diff))
+  function goToCurrentPeriod() {
+    setAnchorDate(new Date())
   }
 
   async function handleAddExpense(e: React.FormEvent) {
@@ -95,7 +157,10 @@ export default function Dashboard() {
     setSubmitting(true)
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setSubmitting(false)
+      return
+    }
 
     const { error } = await supabase.from('expenses').insert({
       user_id: user.id,
@@ -115,18 +180,23 @@ export default function Dashboard() {
     setSubmitting(false)
   }
 
-  const weeklyTotal = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const periodRange = getPeriodRange(period, anchorDate)
+  const periodLabel = formatPeriodLabel(period, periodRange.start, periodRange.end)
+  const periodName = period === 'week' ? 'week' : 'month'
+  const daysInPeriod = getDaysInPeriod(period, periodRange.start)
+
+  const periodTotal = expenses.reduce((sum, e) => sum + e.amount, 0)
   const weeklyLimit = budget?.weekly_limit ?? 0
-  const remaining = weeklyLimit - weeklyTotal
-  const progress = weeklyLimit > 0 ? Math.min((weeklyTotal / weeklyLimit) * 100, 100) : 0
+  const periodLimit = period === 'week' ? weeklyLimit : weeklyLimit * (daysInPeriod / 7)
+  const remaining = periodLimit - periodTotal
+  const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
 
   const byCategory = CATEGORIES.map(cat => ({
     ...cat,
     total: expenses.filter(e => e.category === cat.value).reduce((sum, e) => sum + e.amount, 0),
   }))
 
-  const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0)
-  const netBalance = totalIncome - totalSpent
+  const netBalance = totalIncome - periodTotal
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -137,28 +207,78 @@ export default function Dashboard() {
           <h1 className='text-xl font-bold text-gray-900'>
             {userName ? `Hello, ${userName.split(' ')[0]}` : 'Hello there!'}
           </h1>
-          <p className='text-sm text-gray-500'>Here's your week so far.</p>
+          <p className='text-sm text-gray-500'>Here's your {periodName} so far.</p>
         </div>
+
+        <div className='bg-white rounded-2xl border border-gray-200 p-3 shadow-sm space-y-3'>
+          <div className='grid grid-cols-2 gap-2'>
+            <button
+              type='button'
+              onClick={() => setPeriod('week')}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                period === 'week' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Week
+            </button>
+            <button
+              type='button'
+              onClick={() => setPeriod('month')}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                period === 'month' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Month
+            </button>
+          </div>
+
+          <div className='flex items-center justify-between gap-2'>
+            <button
+              type='button'
+              onClick={() => movePeriod(-1)}
+              className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
+              aria-label={`Previous ${periodName}`}
+            >
+              &lt;
+            </button>
+            <button
+              type='button'
+              onClick={goToCurrentPeriod}
+              className='min-w-0 flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50'
+            >
+              {periodLabel}
+            </button>
+            <button
+              type='button'
+              onClick={() => movePeriod(1)}
+              className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
+              aria-label={`Next ${periodName}`}
+            >
+              &gt;
+            </button>
+          </div>
+        </div>
+
         <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
           <div className='flex justify-between items-start mb-3'>
             <div>
-              <p className='text-xs text-gray-500 uppercase tracking-wide'>Spent this week</p>
-              <p className='text-3xl font-bold text-gray-900'>${weeklyTotal.toFixed(2)}</p>
-              {weeklyLimit > 0 && (
+              <p className='text-xs text-gray-500 uppercase tracking-wide'>Spent this {periodName}</p>
+              <p className='text-3xl font-bold text-gray-900'>${periodTotal.toFixed(2)}</p>
+              {periodLimit > 0 && (
                 <p className={`text-sm mt-0.5 ${remaining < 0 ? 'text-red-500' : 'text-gray-500'}`}>
                   {remaining < 0 ? `$${Math.abs(remaining).toFixed(2)} over budget` : `$${remaining.toFixed(2)} remaining`}
                 </p>
               )}
             </div>
-            {weeklyLimit > 0 && (
+            {periodLimit > 0 && (
               <div className='text-right'>
-                <p className='text-xs text-gray-400'>Weekly limit</p>
-                <p className='text-sm font-semibold text-gray-700'>${weeklyLimit.toFixed(2)}</p>
+                <p className='text-xs text-gray-400'>{period === 'week' ? 'Weekly limit' : 'Month limit'}</p>
+                <p className='text-sm font-semibold text-gray-700'>${periodLimit.toFixed(2)}</p>
               </div>
             )}
           </div>
 
-          {weeklyLimit > 0 && (
+          {periodLimit > 0 && (
             <div className='w-full bg-gray-100 rounded-full h-2'>
               <div
                 className={`h-2 rounded-full transition-all ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
@@ -167,7 +287,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {weeklyLimit === 0 && (
+          {periodLimit === 0 && (
             <p className='text-xs text-gray-400'>
               <Link to='/paycheck' className='text-sky-600 hover:underline'>Set a weekly budget</Link> to track your progress.
             </p>
@@ -184,7 +304,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className='text-right'>
-              <p className='text-xs text-gray-400'>Total income logged</p>
+              <p className='text-xs text-gray-400'>Income this {periodName}</p>
               <p className='text-sm font-semibold text-gray-700'>${totalIncome.toFixed(2)}</p>
             </div>
           </div>
@@ -192,7 +312,7 @@ export default function Dashboard() {
 
         {/* Category breakdown */}
         <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-          <p className='text-sm font-semibold text-gray-700 mb-3'>This week by category</p>
+          <p className='text-sm font-semibold text-gray-700 mb-3'>This {periodName} by category</p>
           <div className='space-y-2'>
             {byCategory.map(cat => (
               <div key={cat.value} className='flex items-center gap-3'>
@@ -211,7 +331,7 @@ export default function Dashboard() {
             <Link to='/history' className='text-xs text-sky-600 hover:underline'>See all</Link>
           </div>
           {expenses.length === 0 ? (
-            <p className='text-sm text-gray-400'>No expenses logged this week yet.</p>
+            <p className='text-sm text-gray-400'>No expenses logged this {periodName} yet.</p>
           ) : (
             <div className='space-y-2'>
               {expenses.slice(0, 5).map(exp => {
