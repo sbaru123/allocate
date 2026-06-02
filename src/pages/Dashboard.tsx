@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import Distribution from '@/components/ExpenseBreakdown'
 import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
 type Category = 'food' | 'transport' | 'entertainment' | 'housing' | 'other'
 
-const CATEGORIES: { value: Category; label: string; color: string }[] = [
-  { value: 'food', label: 'Food & Dining', color: 'bg-orange-400' },
-  { value: 'transport', label: 'Transport', color: 'bg-blue-400' },
-  { value: 'entertainment', label: 'Entertainment', color: 'bg-purple-400' },
-  { value: 'housing', label: 'Housing', color: 'bg-yellow-400' },
-  { value: 'other', label: 'Other', color: 'bg-gray-400' },
+const CATEGORIES: { value: Category; label: string; color: string; chartColor: string }[] = [
+  { value: 'food', label: 'Food & Dining', color: 'bg-orange-400', chartColor: '#fb923c' },
+  { value: 'transport', label: 'Transport', color: 'bg-blue-400', chartColor: '#60a5fa' },
+  { value: 'entertainment', label: 'Entertainment', color: 'bg-purple-400', chartColor: '#c084fc' },
+  { value: 'housing', label: 'Housing', color: 'bg-yellow-400', chartColor: '#facc15' },
+  { value: 'other', label: 'Other', color: 'bg-gray-400', chartColor: '#9ca3af' },
 ]
 
 type Expense = {
@@ -202,153 +203,153 @@ export default function Dashboard() {
     <div className='min-h-screen bg-gray-50'>
       <Sidebar />
 
-      <main className='ml-56 max-w-xl px-4 py-6 space-y-4'>
-        <div>
-          <h1 className='text-xl font-bold text-gray-900'>
-            {userName ? `Hello, ${userName.split(' ')[0]}` : 'Hello there!'}
-          </h1>
-          <p className='text-sm text-gray-500'>Here's your {periodName} so far.</p>
-        </div>
-
-        <div className='bg-white rounded-2xl border border-gray-200 p-3 shadow-sm space-y-3'>
-          <div className='grid grid-cols-2 gap-2'>
-            <button
-              type='button'
-              onClick={() => setPeriod('week')}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                period === 'week' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Week
-            </button>
-            <button
-              type='button'
-              onClick={() => setPeriod('month')}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                period === 'month' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Month
-            </button>
+      <main className='ml-56 px-4 py-6'>
+        <div className='mx-auto max-w-5xl space-y-4'>
+          <div>
+            <h1 className='text-xl font-bold text-gray-900'>
+              {userName ? `Hello, ${userName.split(' ')[0]}` : 'Hello there!'}
+            </h1>
+            <p className='text-sm text-gray-500'>Here's your {periodName} so far.</p>
           </div>
 
-          <div className='flex items-center justify-between gap-2'>
-            <button
-              type='button'
-              onClick={() => movePeriod(-1)}
-              className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
-              aria-label={`Previous ${periodName}`}
-            >
-              &lt;
-            </button>
-            <button
-              type='button'
-              onClick={goToCurrentPeriod}
-              className='min-w-0 flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50'
-            >
-              {periodLabel}
-            </button>
-            <button
-              type='button'
-              onClick={() => movePeriod(1)}
-              className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
-              aria-label={`Next ${periodName}`}
-            >
-              &gt;
-            </button>
-          </div>
-        </div>
+          <div className='bg-white rounded-2xl border border-gray-200 p-3 shadow-sm space-y-3'>
+            <div className='grid grid-cols-2 gap-2'>
+              <button
+                type='button'
+                onClick={() => setPeriod('week')}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  period === 'week' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Week
+              </button>
+              <button
+                type='button'
+                onClick={() => setPeriod('month')}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  period === 'month' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Month
+              </button>
+            </div>
 
-        <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-          <div className='flex justify-between items-start mb-3'>
-            <div>
-              <p className='text-xs text-gray-500 uppercase tracking-wide'>Spent this {periodName}</p>
-              <p className='text-3xl font-bold text-gray-900'>${periodTotal.toFixed(2)}</p>
-              {periodLimit > 0 && (
-                <p className={`text-sm mt-0.5 ${remaining < 0 ? 'text-red-500' : 'text-gray-500'}`}>
-                  {remaining < 0 ? `$${Math.abs(remaining).toFixed(2)} over budget` : `$${remaining.toFixed(2)} remaining`}
-                </p>
+            <div className='flex items-center justify-between gap-2'>
+              <button
+                type='button'
+                onClick={() => movePeriod(-1)}
+                className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
+                aria-label={`Previous ${periodName}`}
+              >
+                &lt;
+              </button>
+              <button
+                type='button'
+                onClick={goToCurrentPeriod}
+                className='min-w-0 flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50'
+              >
+                {periodLabel}
+              </button>
+              <button
+                type='button'
+                onClick={() => movePeriod(1)}
+                className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
+                aria-label={`Next ${periodName}`}
+              >
+                &gt;
+              </button>
+            </div>
+          </div>
+
+          <div className='grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,1.05fr)] lg:items-start'>
+            <div className='space-y-4'>
+              <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+                <div className='flex justify-between items-start mb-3'>
+                  <div>
+                    <p className='text-xs text-gray-500 uppercase tracking-wide'>Spent this {periodName}</p>
+                    <p className='text-3xl font-bold text-gray-900'>${periodTotal.toFixed(2)}</p>
+                    {periodLimit > 0 && (
+                      <p className={`text-sm mt-0.5 ${remaining < 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                        {remaining < 0 ? `$${Math.abs(remaining).toFixed(2)} over budget` : `$${remaining.toFixed(2)} remaining`}
+                      </p>
+                    )}
+                  </div>
+                  {periodLimit > 0 && (
+                    <div className='text-right'>
+                      <p className='text-xs text-gray-400'>{period === 'week' ? 'Weekly limit' : 'Month limit'}</p>
+                      <p className='text-sm font-semibold text-gray-700'>${periodLimit.toFixed(2)}</p>
+                    </div>
+                  )}
+                </div>
+
+                {periodLimit > 0 && (
+                  <div className='w-full bg-gray-100 rounded-full h-2'>
+                    <div
+                      className={`h-2 rounded-full transition-all ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                )}
+
+                {periodLimit === 0 && (
+                  <p className='text-xs text-gray-400'>
+                    <Link to='/paycheck' className='text-sky-600 hover:underline'>Set a weekly budget</Link> to track your progress.
+                  </p>
+                )}
+              </div>
+
+              {/* Recent expenses */}
+              <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+                <div className='flex justify-between items-center mb-3'>
+                  <p className='text-sm font-semibold text-gray-700'>Recent expenses</p>
+                  <Link to='/history' className='text-xs text-sky-600 hover:underline'>See all</Link>
+                </div>
+                {expenses.length === 0 ? (
+                  <p className='text-sm text-gray-400'>No expenses logged this {periodName} yet.</p>
+                ) : (
+                  <div className='space-y-2'>
+                    {expenses.slice(0, 5).map(exp => {
+                      const cat = CATEGORIES.find(c => c.value === exp.category)
+                      return (
+                        <div key={exp.id} className='flex items-center gap-3'>
+                          <div className={`w-2 h-2 rounded-full ${cat?.color ?? 'bg-gray-300'} flex-shrink-0`} />
+                          <div className='flex-1 min-w-0'>
+                            <p className='text-sm text-gray-800 truncate'>{exp.note || cat?.label}</p>
+                            <p className='text-xs text-gray-400'>{cat?.label} · {new Date(exp.created_at).toLocaleDateString()}</p>
+                          </div>
+                          <p className='text-sm font-semibold text-gray-900'>${exp.amount.toFixed(2)}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Net balance */}
+              {totalIncome > 0 && (
+                <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex justify-between items-center'>
+                  <div>
+                    <p className='text-xs text-gray-500 uppercase tracking-wide'>Net balance</p>
+                    <p className={`text-2xl font-bold ${netBalance < 0 ? 'text-red-500' : 'text-sky-700'}`}>
+                      ${netBalance.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className='text-right'>
+                    <p className='text-xs text-gray-400'>Income this {periodName}</p>
+                    <p className='text-sm font-semibold text-gray-700'>${totalIncome.toFixed(2)}</p>
+                  </div>
+                </div>
               )}
             </div>
-            {periodLimit > 0 && (
-              <div className='text-right'>
-                <p className='text-xs text-gray-400'>{period === 'week' ? 'Weekly limit' : 'Month limit'}</p>
-                <p className='text-sm font-semibold text-gray-700'>${periodLimit.toFixed(2)}</p>
-              </div>
-            )}
+
+            <Distribution
+              items={byCategory}
+              periodName={periodName}
+              total={periodTotal}
+              budgetLimit={periodLimit}
+              remaining={remaining}
+            />
           </div>
-
-          {periodLimit > 0 && (
-            <div className='w-full bg-gray-100 rounded-full h-2'>
-              <div
-                className={`h-2 rounded-full transition-all ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          )}
-
-          {periodLimit === 0 && (
-            <p className='text-xs text-gray-400'>
-              <Link to='/paycheck' className='text-sky-600 hover:underline'>Set a weekly budget</Link> to track your progress.
-            </p>
-          )}
-        </div>
-
-        {/* Net balance */}
-        {totalIncome > 0 && (
-          <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex justify-between items-center'>
-            <div>
-              <p className='text-xs text-gray-500 uppercase tracking-wide'>Net balance</p>
-              <p className={`text-2xl font-bold ${netBalance < 0 ? 'text-red-500' : 'text-sky-700'}`}>
-                ${netBalance.toFixed(2)}
-              </p>
-            </div>
-            <div className='text-right'>
-              <p className='text-xs text-gray-400'>Income this {periodName}</p>
-              <p className='text-sm font-semibold text-gray-700'>${totalIncome.toFixed(2)}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Category breakdown */}
-        <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-          <p className='text-sm font-semibold text-gray-700 mb-3'>This {periodName} by category</p>
-          <div className='space-y-2'>
-            {byCategory.map(cat => (
-              <div key={cat.value} className='flex items-center gap-3'>
-                <div className={`w-2.5 h-2.5 rounded-full ${cat.color} flex-shrink-0`} />
-                <span className='text-sm text-gray-600 flex-1'>{cat.label}</span>
-                <span className='text-sm font-medium text-gray-900'>${cat.total.toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent expenses */}
-        <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-          <div className='flex justify-between items-center mb-3'>
-            <p className='text-sm font-semibold text-gray-700'>Recent expenses</p>
-            <Link to='/history' className='text-xs text-sky-600 hover:underline'>See all</Link>
-          </div>
-          {expenses.length === 0 ? (
-            <p className='text-sm text-gray-400'>No expenses logged this {periodName} yet.</p>
-          ) : (
-            <div className='space-y-2'>
-              {expenses.slice(0, 5).map(exp => {
-                const cat = CATEGORIES.find(c => c.value === exp.category)
-                return (
-                  <div key={exp.id} className='flex items-center gap-3'>
-                    <div className={`w-2 h-2 rounded-full ${cat?.color ?? 'bg-gray-300'} flex-shrink-0`} />
-                    <div className='flex-1 min-w-0'>
-                      <p className='text-sm text-gray-800 truncate'>{exp.note || cat?.label}</p>
-                      <p className='text-xs text-gray-400'>{cat?.label} · {new Date(exp.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <p className='text-sm font-semibold text-gray-900'>${exp.amount.toFixed(2)}</p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
       </main>
 
