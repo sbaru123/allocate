@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
 type Paycheck = {
@@ -9,7 +10,7 @@ type Paycheck = {
   created_at: string
 }
 
-export default function Settings() {
+export default function Paycheck() {
   const navigate = useNavigate()
   const [weeklyLimit, setWeeklyLimit] = useState('')
   const [savedLimit, setSavedLimit] = useState<number | null>(null)
@@ -92,12 +93,14 @@ export default function Settings() {
 
   return (
     <div className='min-h-screen bg-gray-50'>
-      <nav className='bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3'>
-        <Link to='/' className='text-gray-400 hover:text-gray-700 text-sm'>← Back</Link>
-        <span className='font-bold text-sky-700 tracking-tight'>Settings</span>
-      </nav>
+      <Sidebar />
 
-      <div className='max-w-xl mx-auto px-4 py-6 space-y-5'>
+      <main className='ml-56 flex justify-center px-8 py-8'>
+        <div className='w-full max-w-2xl space-y-5'>
+        <div>
+          <h1 className='text-xl font-bold text-gray-900'>Paycheck</h1>
+          <p className='text-sm text-gray-500'>Set your budget and log income.</p>
+        </div>
 
         {/* Weekly budget */}
         <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
@@ -183,7 +186,8 @@ export default function Settings() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

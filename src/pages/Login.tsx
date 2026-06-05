@@ -22,7 +22,7 @@ export default function Login() {
       return
     }
 
-    navigate('/')
+    navigate('/dashboard')
   }
 
   return (
@@ -30,7 +30,7 @@ export default function Login() {
       <div className='w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8'>
         <div className='mb-6 text-center'>
           <h1 className='text-2xl font-bold text-gray-900'>Welcome back</h1>
-          <p className='text-sm text-gray-500 mt-1'>Sign in to your Terp Budget account</p>
+          <p className='text-sm text-gray-500 mt-1'>Sign in to your Allocate account</p>
         </div>
 
         <form onSubmit={handleSubmit} className='space-y-4'>
