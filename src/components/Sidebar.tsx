@@ -19,8 +19,8 @@ export default function Sidebar() {
     <aside className='fixed inset-y-0 left-0 w-56 border-r border-gray-200 bg-white'>
       <div className='flex h-full flex-col'>
         <div className='border-b border-gray-200 px-4 py-4'>
-          <NavLink to='/dashboard' className='font-bold text-sky-700 text-lg tracking-tight'>
-            Terp Budget
+          <NavLink to='/dashboard' className='font-bold text-sky-700 text-2xl tracking-tight'>
+            Allocate
           </NavLink>
         </div>
 

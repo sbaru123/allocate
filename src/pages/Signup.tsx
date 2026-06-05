@@ -20,6 +20,7 @@ export default function Signup() {
       password,
       options: {
         data: { name },
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     })
 
@@ -29,7 +30,7 @@ export default function Signup() {
       return
     }
 
-    navigate('/')
+    navigate('/check-email')
   }
 
   return (
@@ -37,7 +38,7 @@ export default function Signup() {
       <div className='w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8'>
         <div className='mb-6 text-center'>
           <h1 className='text-2xl font-bold text-gray-900'>Create your account</h1>
-          <p className='text-sm text-gray-500 mt-1'>Start tracking your budget today</p>
+          <p className='text-sm text-gray-500 mt-1'>Built for interns who want to stay on top of their money</p>
         </div>
 
         <form onSubmit={handleSubmit} className='space-y-4'>

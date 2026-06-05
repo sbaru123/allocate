@@ -69,7 +69,8 @@ export default function History() {
     <div className='min-h-screen bg-gray-50'>
       <Sidebar />
 
-      <main className='ml-56 max-w-xl px-4 py-6 space-y-4'>
+      <main className='ml-56 flex justify-center px-8 py-8'>
+        <div className='w-full max-w-2xl space-y-4'>
         <div>
           <h1 className='text-xl font-bold text-gray-900'>History</h1>
           <p className='text-sm text-gray-500'>Review and filter your logged expenses.</p>
@@ -133,6 +134,7 @@ export default function History() {
             </div>
           </div>
         ))}
+        </div>
       </main>
     </div>
   )

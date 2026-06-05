@@ -95,7 +95,8 @@ export default function Paycheck() {
     <div className='min-h-screen bg-gray-50'>
       <Sidebar />
 
-      <main className='ml-56 max-w-xl px-4 py-6 space-y-5'>
+      <main className='ml-56 flex justify-center px-8 py-8'>
+        <div className='w-full max-w-2xl space-y-5'>
         <div>
           <h1 className='text-xl font-bold text-gray-900'>Paycheck</h1>
           <p className='text-sm text-gray-500'>Set your budget and log income.</p>
@@ -184,6 +185,7 @@ export default function Paycheck() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </main>
     </div>
