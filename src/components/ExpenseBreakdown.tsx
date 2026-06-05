@@ -116,6 +116,7 @@ export default function Distribution({ items, periodName, total, budgetLimit, re
                 key={item.label}
                 onMouseEnter={() => setHoveredItem(item)}
                 onMouseLeave={() => setHoveredItem(null)}
+                className='cursor-default rounded-lg -mx-1 px-1 py-0.5 transition-colors duration-150 hover:bg-gray-50'
               >
                 <div className='flex items-center gap-3 mb-1'>
                   <div className={`h-3 w-3 rounded-full ${item.color} flex-shrink-0`} />
@@ -124,7 +125,7 @@ export default function Distribution({ items, periodName, total, budgetLimit, re
                 </div>
                 <div className='h-2 w-full rounded-full bg-gray-100 overflow-hidden'>
                   <div
-                    className='h-full rounded-full transition-all'
+                    className='h-full rounded-full transition-[width] duration-500'
                     style={{ width: `${percent}%`, backgroundColor: item.chartColor }}
                   />
                 </div>
@@ -140,6 +141,7 @@ export default function Distribution({ items, periodName, total, budgetLimit, re
                 total: Math.abs(remaining),
               })}
               onMouseLeave={() => setHoveredItem(null)}
+              className='cursor-default rounded-lg -mx-1 px-1 py-0.5 transition-colors duration-150 hover:bg-gray-50'
             >
               <div className='flex items-center gap-3 mb-1'>
                 <div className='h-3 w-3 rounded-full bg-gray-200 flex-shrink-0' />
@@ -152,7 +154,7 @@ export default function Distribution({ items, periodName, total, budgetLimit, re
               </div>
               <div className='h-2 w-full rounded-full bg-gray-100 overflow-hidden'>
                 <div
-                  className={`h-full rounded-full transition-all ${remaining < 0 ? 'bg-red-400' : 'bg-gray-200'}`}
+                  className={`h-full rounded-full transition-[width,background-color] duration-500 ${remaining < 0 ? 'bg-red-400' : 'bg-gray-200'}`}
                   style={{ width: `${chartTotal > 0 ? (Math.abs(remaining) / chartTotal) * 100 : 0}%` }}
                 />
               </div>

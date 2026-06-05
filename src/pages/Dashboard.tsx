@@ -217,7 +217,7 @@ export default function Dashboard() {
               <button
                 type='button'
                 onClick={() => setPeriod('week')}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-[transform,background-color,color] duration-150 active:scale-[0.97] ${
                   period === 'week' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                 }`}
               >
@@ -226,7 +226,7 @@ export default function Dashboard() {
               <button
                 type='button'
                 onClick={() => setPeriod('month')}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-[transform,background-color,color] duration-150 active:scale-[0.97] ${
                   period === 'month' ? 'bg-sky-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                 }`}
               >
@@ -238,7 +238,7 @@ export default function Dashboard() {
               <button
                 type='button'
                 onClick={() => movePeriod(-1)}
-                className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
+                className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 transition-[transform,background-color] duration-150 hover:bg-gray-50 active:scale-[0.95]'
                 aria-label={`Previous ${periodName}`}
               >
                 &lt;
@@ -246,14 +246,14 @@ export default function Dashboard() {
               <button
                 type='button'
                 onClick={goToCurrentPeriod}
-                className='min-w-0 flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50'
+                className='min-w-0 flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 transition-[transform,background-color] duration-150 hover:bg-gray-50 active:scale-[0.97]'
               >
                 {periodLabel}
               </button>
               <button
                 type='button'
                 onClick={() => movePeriod(1)}
-                className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50'
+                className='h-9 w-9 rounded-lg border border-gray-200 text-sm font-semibold text-gray-500 transition-[transform,background-color] duration-150 hover:bg-gray-50 active:scale-[0.95]'
                 aria-label={`Next ${periodName}`}
               >
                 &gt;
@@ -285,7 +285,7 @@ export default function Dashboard() {
                 {periodLimit > 0 && (
                   <div className='w-full bg-gray-100 rounded-full h-2'>
                     <div
-                      className={`h-2 rounded-full transition-all ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
+                      className={`h-2 rounded-full transition-[width,background-color] duration-500 ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -308,10 +308,14 @@ export default function Dashboard() {
                   <p className='text-sm text-gray-400'>No expenses logged this {periodName} yet.</p>
                 ) : (
                   <div className='space-y-2'>
-                    {expenses.slice(0, 5).map(exp => {
+                    {expenses.slice(0, 5).map((exp, index) => {
                       const cat = CATEGORIES.find(c => c.value === exp.category)
                       return (
-                        <div key={exp.id} className='flex items-center gap-3'>
+                        <div
+                          key={exp.id}
+                          className='expense-item flex items-center gap-3'
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
                           <div className={`w-2 h-2 rounded-full ${cat?.color ?? 'bg-gray-300'} flex-shrink-0`} />
                           <div className='flex-1 min-w-0'>
                             <p className='text-sm text-gray-800 truncate'>{exp.note || cat?.label}</p>
@@ -356,15 +360,15 @@ export default function Dashboard() {
       {/* Quick add button */}
       <button
         onClick={() => setShowForm(true)}
-        className='fixed bottom-6 right-6 bg-sky-600 hover:bg-sky-700 text-white rounded-full w-14 h-14 text-2xl shadow-lg shadow-sky-200 flex items-center justify-center transition-all hover:scale-105'
+        className='fixed bottom-6 right-6 bg-sky-600 hover:bg-sky-700 text-white rounded-full w-14 h-14 text-2xl shadow-lg shadow-sky-200 flex items-center justify-center transition-[transform,background-color,box-shadow] duration-150 [@media(hover:hover)]:hover:scale-105 active:scale-[0.95]'
       >
         +
       </button>
 
       {/* Quick add modal */}
       {showForm && (
-        <div className='fixed inset-0 bg-black/40 flex items-center justify-center z-50' onClick={() => setShowForm(false)}>
-          <div className='bg-white w-full max-w-md rounded-2xl p-6' onClick={e => e.stopPropagation()}>
+        <div className='modal-backdrop fixed inset-0 bg-black/40 flex items-center justify-center z-50' onClick={() => setShowForm(false)}>
+          <div className='modal-content bg-white w-full max-w-md rounded-2xl p-6' onClick={e => e.stopPropagation()}>
             <h2 className='text-lg font-bold text-gray-900 mb-4'>Log an expense</h2>
             <form onSubmit={handleAddExpense} className='space-y-4'>
               <div>
@@ -389,7 +393,7 @@ export default function Dashboard() {
                       key={cat.value}
                       type='button'
                       onClick={() => setCategory(cat.value)}
-                      className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      className={`py-1.5 rounded-lg text-xs font-medium border transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] ${
                         category === cat.value
                           ? 'border-sky-400 bg-sky-50 text-sky-700'
                           : 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -414,14 +418,14 @@ export default function Dashboard() {
                 <button
                   type='button'
                   onClick={() => setShowForm(false)}
-                  className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-50'
+                  className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium transition-[transform,background-color] duration-150 hover:bg-gray-50 active:scale-[0.97]'
                 >
                   Cancel
                 </button>
                 <button
                   type='submit'
                   disabled={submitting}
-                  className='flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors'
+                  className='flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-[transform,background-color] duration-150 active:scale-[0.97]'
                 >
                   {submitting ? 'Saving...' : 'Add expense'}
                 </button>

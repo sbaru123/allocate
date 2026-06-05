@@ -1,1 +1,51 @@
 @import "tailwindcss";
+
+/* Custom easing curves — built-in CSS easings are too weak */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Modal backdrop — fade in on mount */
+.modal-backdrop {
+  opacity: 1;
+  transition: opacity 150ms ease-out;
+}
+
+@starting-style {
+  .modal-backdrop {
+    opacity: 0;
+  }
+}
+
+/* Modal content — scale up from 0.95 on mount */
+.modal-content {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+
+@starting-style {
+  .modal-content {
+    opacity: 0;
+    transform: scale(0.95) translateY(6px);
+  }
+}
+
+/* Expense list stagger */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.expense-item {
+  animation: fade-up 250ms var(--ease-out) both;
+}
