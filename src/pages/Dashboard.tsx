@@ -84,6 +84,7 @@ export default function Dashboard() {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<Category>('food')
   const [note, setNote] = useState('')
+  const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [submitting, setSubmitting] = useState(false)
   const [userName, setUserName] = useState('')
 
@@ -168,12 +169,14 @@ export default function Dashboard() {
       amount: parseFloat(amount),
       category,
       note,
+      created_at: new Date(expenseDate).toISOString(),
     })
 
     if (!error) {
       setAmount('')
       setNote('')
       setCategory('food')
+      setExpenseDate(new Date().toISOString().slice(0, 10))
       setShowForm(false)
       fetchData()
     }
@@ -357,12 +360,15 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Quick add button */}
+      {/* Quick add button — expands to pill on hover */}
       <button
         onClick={() => setShowForm(true)}
-        className='fixed bottom-6 right-6 bg-sky-600 hover:bg-sky-700 text-white rounded-full w-14 h-14 text-2xl shadow-lg shadow-sky-200 flex items-center justify-center transition-[transform,background-color,box-shadow] duration-150 [@media(hover:hover)]:hover:scale-105 active:scale-[0.95]'
+        className='group fixed bottom-6 right-6 flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white rounded-full h-14 px-4 shadow-lg shadow-sky-200 overflow-hidden transition-[width,background-color] duration-300 ease-in-out w-14 hover:w-52 active:scale-[0.97]'
       >
-        +
+        <span className='text-2xl leading-none flex-shrink-0'>+</span>
+        <span className='text-sm font-semibold whitespace-nowrap max-w-0 overflow-hidden group-hover:max-w-xs group-hover:pl-2 transition-[max-width,padding] duration-300 delay-75'>
+          Log an Expense
+        </span>
       </button>
 
       {/* Quick add modal */}
@@ -412,6 +418,17 @@ export default function Dashboard() {
                   onChange={e => setNote(e.target.value)}
                   className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                   placeholder='e.g. Chipotle, Metro card...'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>Date</label>
+                <input
+                  type='date'
+                  required
+                  value={expenseDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setExpenseDate(e.target.value)}
+                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 />
               </div>
               <div className='flex gap-2 pt-1'>
