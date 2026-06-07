@@ -77,7 +77,6 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budget, setBudget] = useState<Budget | null>(null)
-  const [totalIncome, setTotalIncome] = useState(0)
   const [period, setPeriod] = useState<Period>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [showForm, setShowForm] = useState(false)
@@ -97,7 +96,7 @@ export default function Dashboard() {
 
     const { start, end } = getPeriodRange(period, anchorDate)
 
-    const [expensesRes, budgetRes, paychecksRes] = await Promise.all([
+    const [expensesRes, budgetRes] = await Promise.all([
       supabase
         .from('expenses')
         .select('*')
@@ -110,20 +109,10 @@ export default function Dashboard() {
         .select('weekly_limit')
         .eq('user_id', user.id)
         .single(),
-      supabase
-        .from('paychecks')
-        .select('amount')
-        .eq('user_id', user.id)
-        .gte('created_at', start.toISOString())
-        .lt('created_at', end.toISOString()),
     ])
 
     if (expensesRes.data) setExpenses(expensesRes.data)
     if (budgetRes.data) setBudget(budgetRes.data)
-    if (paychecksRes.data) {
-      const total = paychecksRes.data.reduce((sum, p) => sum + p.amount, 0)
-      setTotalIncome(total)
-    }
   }, [period, anchorDate])
 
   useEffect(function () {
@@ -204,7 +193,6 @@ export default function Dashboard() {
     total: expenses.filter(e => e.category === cat.value).reduce((sum, e) => sum + e.amount, 0),
   }))
 
-  const netBalance = totalIncome - periodTotal
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -336,21 +324,6 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Net balance */}
-              {totalIncome > 0 && (
-                <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex justify-between items-center'>
-                  <div>
-                    <p className='text-xs text-gray-500 uppercase tracking-wide'>Net balance</p>
-                    <p className={`text-2xl font-bold ${netBalance < 0 ? 'text-red-500' : 'text-sky-700'}`}>
-                      ${netBalance.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className='text-right'>
-                    <p className='text-xs text-gray-400'>Income this {periodName}</p>
-                    <p className='text-sm font-semibold text-gray-700'>${totalIncome.toFixed(2)}</p>
-                  </div>
-                </div>
-              )}
             </div>
 
             <Distribution
