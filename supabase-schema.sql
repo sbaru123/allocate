@@ -47,3 +47,19 @@ create policy "Users can manage their own paychecks"
   on paychecks for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Allocations table (paycheck distribution rules)
+create table allocations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  label text not null,
+  percentage numeric(5, 2) not null check (percentage > 0 and percentage <= 100),
+  created_at timestamptz default now()
+);
+
+alter table allocations enable row level security;
+
+create policy "Users can manage their own allocations"
+  on allocations for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

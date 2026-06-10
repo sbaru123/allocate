@@ -77,13 +77,16 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budget, setBudget] = useState<Budget | null>(null)
-  const [totalIncome, setTotalIncome] = useState(0)
   const [period, setPeriod] = useState<Period>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<Category>('food')
   const [note, setNote] = useState('')
+  const [expenseDate, setExpenseDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
   const [submitting, setSubmitting] = useState(false)
   const [userName, setUserName] = useState('')
 
@@ -93,7 +96,7 @@ export default function Dashboard() {
 
     const { start, end } = getPeriodRange(period, anchorDate)
 
-    const [expensesRes, budgetRes, paychecksRes] = await Promise.all([
+    const [expensesRes, budgetRes] = await Promise.all([
       supabase
         .from('expenses')
         .select('*')
@@ -106,20 +109,10 @@ export default function Dashboard() {
         .select('weekly_limit')
         .eq('user_id', user.id)
         .single(),
-      supabase
-        .from('paychecks')
-        .select('amount')
-        .eq('user_id', user.id)
-        .gte('created_at', start.toISOString())
-        .lt('created_at', end.toISOString()),
     ])
 
     if (expensesRes.data) setExpenses(expensesRes.data)
     if (budgetRes.data) setBudget(budgetRes.data)
-    if (paychecksRes.data) {
-      const total = paychecksRes.data.reduce((sum, p) => sum + p.amount, 0)
-      setTotalIncome(total)
-    }
   }, [period, anchorDate])
 
   useEffect(function () {
@@ -168,12 +161,15 @@ export default function Dashboard() {
       amount: parseFloat(amount),
       category,
       note,
+      created_at: new Date(expenseDate).toISOString(),
     })
 
     if (!error) {
       setAmount('')
       setNote('')
       setCategory('food')
+      const d = new Date()
+      setExpenseDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
       setShowForm(false)
       fetchData()
     }
@@ -197,7 +193,6 @@ export default function Dashboard() {
     total: expenses.filter(e => e.category === cat.value).reduce((sum, e) => sum + e.amount, 0),
   }))
 
-  const netBalance = totalIncome - periodTotal
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -329,21 +324,6 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Net balance */}
-              {totalIncome > 0 && (
-                <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex justify-between items-center'>
-                  <div>
-                    <p className='text-xs text-gray-500 uppercase tracking-wide'>Net balance</p>
-                    <p className={`text-2xl font-bold ${netBalance < 0 ? 'text-red-500' : 'text-sky-700'}`}>
-                      ${netBalance.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className='text-right'>
-                    <p className='text-xs text-gray-400'>Income this {periodName}</p>
-                    <p className='text-sm font-semibold text-gray-700'>${totalIncome.toFixed(2)}</p>
-                  </div>
-                </div>
-              )}
             </div>
 
             <Distribution
@@ -357,19 +337,22 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Quick add button */}
+      {/* Quick add button — expands to pill on hover */}
       <button
         onClick={() => setShowForm(true)}
-        className='fixed bottom-6 right-6 bg-sky-600 hover:bg-sky-700 text-white rounded-full w-14 h-14 text-2xl shadow-lg shadow-sky-200 flex items-center justify-center transition-[transform,background-color,box-shadow] duration-150 [@media(hover:hover)]:hover:scale-105 active:scale-[0.95]'
+        className='group fixed bottom-6 right-6 flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white rounded-full h-14 px-4 shadow-lg shadow-sky-200 overflow-hidden transition-[width,background-color] duration-300 ease-in-out w-14 hover:w-52 active:scale-[0.97]'
       >
-        +
+        <span className='text-lg font-bold leading-none flex-shrink-0 flex items-center'>+</span>
+        <span className='text-sm font-semibold whitespace-nowrap max-w-0 overflow-hidden group-hover:max-w-xs group-hover:pl-2 transition-[max-width,padding] duration-300 delay-75 flex items-center'>
+          Log an Expense
+        </span>
       </button>
 
       {/* Quick add modal */}
       {showForm && (
         <div className='modal-backdrop fixed inset-0 bg-black/40 flex items-center justify-center z-50' onClick={() => setShowForm(false)}>
           <div className='modal-content bg-white w-full max-w-md rounded-2xl p-6' onClick={e => e.stopPropagation()}>
-            <h2 className='text-lg font-bold text-gray-900 mb-4'>Log an expense</h2>
+            <h2 className='text-lg font-bold text-gray-900 mb-4 text-center'>Log an expense</h2>
             <form onSubmit={handleAddExpense} className='space-y-4'>
               <div>
                 <label className='block text-sm font-medium text-gray-700 mb-1'>Amount ($)</label>
@@ -412,6 +395,17 @@ export default function Dashboard() {
                   onChange={e => setNote(e.target.value)}
                   className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                   placeholder='e.g. Chipotle, Metro card...'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>Date</label>
+                <input
+                  type='date'
+                  required
+                  value={expenseDate}
+                  max={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })()}
+                  onChange={e => setExpenseDate(e.target.value)}
+                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 />
               </div>
               <div className='flex gap-2 pt-1'>
