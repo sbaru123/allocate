@@ -3,6 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
+const PALETTE = [
+  { bg: 'bg-sky-400',    hex: '#38bdf8' },
+  { bg: 'bg-violet-400', hex: '#a78bfa' },
+  { bg: 'bg-emerald-400',hex: '#34d399' },
+  { bg: 'bg-orange-400', hex: '#fb923c' },
+  { bg: 'bg-pink-400',   hex: '#f472b6' },
+  { bg: 'bg-yellow-400', hex: '#facc15' },
+  { bg: 'bg-teal-400',   hex: '#2dd4bf' },
+  { bg: 'bg-red-400',    hex: '#f87171' },
+]
+
 type Paycheck = {
   id: string
   amount: number
@@ -256,17 +267,23 @@ export default function Paycheck() {
             </div>
             <p className='text-xs text-gray-400 mb-4'>Distribute your paycheck into goals. Runs every paycheck.</p>
 
-            {/* Progress bar */}
+            {/* Progress bar — segmented by allocation color */}
             <div className='mb-4'>
               <div className='flex justify-between text-xs mb-1'>
                 <span className='text-gray-500'>{totalAllocated.toFixed(0)}% allocated</span>
                 <span className={remaining < 0 ? 'text-red-500' : 'text-gray-400'}>{remaining.toFixed(0)}% unallocated</span>
               </div>
-              <div className='w-full bg-gray-100 rounded-full h-2'>
-                <div
-                  className={`h-2 rounded-full transition-all duration-500 ${totalAllocated > 100 ? 'bg-red-400' : 'bg-sky-400'}`}
-                  style={{ width: `${Math.min(totalAllocated, 100)}%` }}
-                />
+              <div className='w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex'>
+                {allocations.map((a, i) => (
+                  <div
+                    key={a.id}
+                    className='h-full transition-all duration-500'
+                    style={{
+                      width: `${Math.min(a.percentage, 100)}%`,
+                      backgroundColor: PALETTE[i % PALETTE.length].hex,
+                    }}
+                  />
+                ))}
               </div>
             </div>
 
@@ -275,7 +292,7 @@ export default function Paycheck() {
               {allocations.length === 0 && (
                 <p className='text-sm text-gray-400'>No allocations yet. Add one below.</p>
               )}
-              {allocations.map(a => (
+              {allocations.map((a, i) => (
                 <div key={a.id} className='flex items-center gap-2'>
                   {editingId === a.id ? (
                     <>
@@ -303,7 +320,10 @@ export default function Paycheck() {
                   ) : (
                     <>
                       <div className='flex-1 flex items-center gap-2 min-w-0'>
-                        <div className='w-1.5 h-1.5 rounded-full bg-sky-400 flex-shrink-0' />
+                        <div
+                          className='w-2 h-2 rounded-full flex-shrink-0'
+                          style={{ backgroundColor: PALETTE[i % PALETTE.length].hex }}
+                        />
                         <span className='text-sm text-gray-800 truncate'>{a.label}</span>
                       </div>
                       <span className='text-sm font-semibold text-gray-700 w-12 text-right flex-shrink-0'>{a.percentage}%</span>
