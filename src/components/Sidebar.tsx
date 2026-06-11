@@ -3,8 +3,8 @@ import { supabase } from '@/lib/supabase'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
-  { to: '/history', label: 'History' },
   { to: '/paycheck', label: 'Paycheck' },
+  { to: '/history', label: 'History' }
 ]
 
 export default function Sidebar() {
@@ -46,7 +46,7 @@ export default function Sidebar() {
           <button
             type='button'
             onClick={handleSignOut}
-            className='w-full rounded-lg px-3 py-2 text-center text-sm font-medium text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700'
+            className='w-full rounded-lg px-3 py-2 text-center text-sm font-medium text-black-200 transition-colors hover:bg-gray-200 hover:text-black-700'
           >
             Sign out
           </button>

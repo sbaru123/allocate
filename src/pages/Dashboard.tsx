@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Distribution from '@/components/ExpenseBreakdown'
 import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
 const CATEGORIES: { value: Category; label: string; color: string; chartColor: string }[] = [
-  { value: 'food', label: 'Food & Dining', color: 'bg-orange-400', chartColor: '#fb923c' },
-  { value: 'transport', label: 'Transport', color: 'bg-blue-400', chartColor: '#60a5fa' },
-  { value: 'entertainment', label: 'Entertainment', color: 'bg-purple-400', chartColor: '#c084fc' },
-  { value: 'housing', label: 'Housing', color: 'bg-yellow-400', chartColor: '#facc15' },
-  { value: 'other', label: 'Other', color: 'bg-gray-400', chartColor: '#9ca3af' },
+  { value: 'food',          label: 'Food & Dining',  color: 'bg-orange-400', chartColor: '#fb923c' },
+  { value: 'transport',     label: 'Transport',       color: 'bg-blue-400',   chartColor: '#60a5fa' },
+  { value: 'entertainment', label: 'Entertainment',   color: 'bg-purple-400', chartColor: '#c084fc' },
+  { value: 'housing',       label: 'Housing',         color: 'bg-yellow-400', chartColor: '#facc15' },
+  { value: 'other',         label: 'Other',           color: 'bg-gray-400',   chartColor: '#9ca3af' },
 ]
 
 const PALETTE = [
@@ -54,6 +55,15 @@ type Allocation = {
 
 type Period = 'week' | 'month'
 
+type DashboardData = {
+  expenses: Expense[]
+  chartExpenses: Expense[]
+  budget: Budget | null
+  paychecks: Paycheck[]
+  allocations: Allocation[]
+  latestPaycheckRecord: Paycheck | null
+}
+
 function getPeriodRange(period: Period, anchorDate: Date) {
   if (period === 'month') {
     const start = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1)
@@ -90,99 +100,139 @@ function localDateStr(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+async function fetchDashboardData(period: Period, periodStart: Date): Promise<DashboardData> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { start, end } = getPeriodRange(period, periodStart)
+  const today = new Date()
+  const chartEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+  const chartStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+
+  const [expensesRes, chartExpensesRes, budgetRes, paychecksRes, allocationsRes, latestPaycheckRes] = await Promise.all([
+    supabase.from('expenses').select('*').eq('user_id', user.id)
+      .gte('created_at', start.toISOString()).lt('created_at', end.toISOString())
+      .order('created_at', { ascending: false }),
+    supabase.from('expenses').select('*').eq('user_id', user.id)
+      .gte('created_at', chartStart.toISOString()).lt('created_at', chartEnd.toISOString()),
+    supabase.from('budgets').select('pay_frequency').eq('user_id', user.id).single(),
+    supabase.from('paychecks').select('*').eq('user_id', user.id)
+      .gte('created_at', monthStart.toISOString()).lt('created_at', monthEnd.toISOString())
+      .order('created_at', { ascending: false }),
+    supabase.from('allocations').select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: true }),
+    supabase.from('paychecks').select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: false }).limit(1).single(),
+  ])
+
+  return {
+    expenses: expensesRes.data ?? [],
+    chartExpenses: chartExpensesRes.data ?? [],
+    budget: budgetRes.data ?? null,
+    paychecks: paychecksRes.data ?? [],
+    allocations: allocationsRes.data ?? [],
+    latestPaycheckRecord: latestPaycheckRes.data ?? null,
+  }
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [chartExpenses, setChartExpenses] = useState<Expense[]>([])
-  const [budget, setBudget] = useState<Budget | null>(null)
-  const [paychecks, setPaychecks] = useState<Paycheck[]>([])
-  const [latestPaycheckRecord, setLatestPaycheckRecord] = useState<Paycheck | null>(null)
-  const [allocations, setAllocations] = useState<Allocation[]>([])
+  const queryClient = useQueryClient()
+
+  // UI state
   const [period, setPeriod] = useState<Period>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
+  const [userName, setUserName] = useState('')
+
+  // Log expense modal
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<Category>('food')
   const [note, setNote] = useState('')
   const [expenseDate, setExpenseDate] = useState(() => localDateStr(new Date()))
-  const [submitting, setSubmitting] = useState(false)
-  const [userName, setUserName] = useState('')
 
-  const fetchData = useCallback(async function () {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+  // Edit expense modal
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editCategory, setEditCategory] = useState<Category>('food')
+  const [editNote, setEditNote] = useState('')
+  const [editDate, setEditDate] = useState('')
 
-    const { start, end } = getPeriodRange(period, anchorDate)
-
-    const today = new Date()
-    const chartEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-    const chartStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
-
-    const [expensesRes, chartExpensesRes, budgetRes, paychecksRes, allocationsRes, latestPaycheckRes] = await Promise.all([
-      supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', start.toISOString())
-        .lt('created_at', end.toISOString())
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', chartStart.toISOString())
-        .lt('created_at', chartEnd.toISOString()),
-      supabase
-        .from('budgets')
-        .select('pay_frequency')
-        .eq('user_id', user.id)
-        .single(),
-      supabase
-        .from('paychecks')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', monthStart.toISOString())
-        .lt('created_at', monthEnd.toISOString())
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('allocations')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('paychecks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single(),
-    ])
-
-    if (expensesRes.data) setExpenses(expensesRes.data)
-    if (chartExpensesRes.data) setChartExpenses(chartExpensesRes.data)
-    if (budgetRes.data) setBudget(budgetRes.data)
-    if (paychecksRes.data) setPaychecks(paychecksRes.data)
-    if (allocationsRes.data) setAllocations(allocationsRes.data)
-    if (latestPaycheckRes.data) setLatestPaycheckRecord(latestPaycheckRes.data)
-  }, [period, anchorDate])
-
+  // Auth check
   useEffect(function () {
-    async function loadDashboard() {
+    async function loadUser() {
       const { data } = await supabase.auth.getUser()
-      if (!data.user) {
-        navigate('/login')
-        return
-      }
+      if (!data.user) { navigate('/login'); return }
       setUserName(data.user.user_metadata?.name ?? '')
-      fetchData()
     }
-    loadDashboard()
-  }, [navigate, fetchData])
+    loadUser()
+  }, [navigate])
+
+  // Compute stable period start for query key
+  const periodRange = getPeriodRange(period, anchorDate)
+  const periodStartStr = localDateStr(periodRange.start)
+
+  // Data query — cached for 5 min, instant on revisit
+  const { data: dashData } = useQuery({
+    queryKey: ['dashboard', period, periodStartStr],
+    queryFn: function () { return fetchDashboardData(period, periodRange.start) },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Destructure with defaults so JSX never sees undefined
+  const expenses = dashData?.expenses ?? []
+  const chartExpenses = dashData?.chartExpenses ?? []
+  const budget = dashData?.budget ?? null
+  const paychecks = dashData?.paychecks ?? []
+  const allocations = dashData?.allocations ?? []
+  const latestPaycheckRecord = dashData?.latestPaycheckRecord ?? null
+
+  // Mutations
+  const addExpenseMutation = useMutation({
+    mutationFn: async function (vars: { amount: number; category: Category; note: string; date: string }) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+      const { error } = await supabase.from('expenses').insert({
+        user_id: user.id,
+        amount: vars.amount,
+        category: vars.category,
+        note: vars.note,
+        created_at: new Date(vars.date + 'T12:00:00').toISOString(),
+      })
+      if (error) throw error
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['history'] })
+      setAmount('')
+      setNote('')
+      setCategory('food')
+      setExpenseDate(localDateStr(new Date()))
+      setShowForm(false)
+    },
+  })
+
+  const editExpenseMutation = useMutation({
+    mutationFn: async function (vars: { id: string; amount: number; category: Category; note: string; date: string }) {
+      const { error } = await supabase.from('expenses').update({
+        amount: vars.amount,
+        category: vars.category,
+        note: vars.note,
+        created_at: new Date(vars.date + 'T12:00:00').toISOString(),
+      }).eq('id', vars.id)
+      if (error) throw error
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['history'] })
+      setEditingExpense(null)
+    },
+  })
 
   function movePeriod(direction: -1 | 1) {
-    setAnchorDate(prev => {
+    setAnchorDate(function (prev) {
       const next = new Date(prev)
       if (period === 'week') {
         next.setDate(prev.getDate() + direction * 7)
@@ -197,50 +247,53 @@ export default function Dashboard() {
     setAnchorDate(new Date())
   }
 
-  async function handleAddExpense(e: React.FormEvent) {
+  function handleAddExpense(e: React.FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setSubmitting(false)
-      return
-    }
-    const { error } = await supabase.from('expenses').insert({
-      user_id: user.id,
+    addExpenseMutation.mutate({
       amount: parseFloat(amount),
       category,
       note,
-      created_at: new Date(expenseDate + 'T12:00:00').toISOString(),
+      date: expenseDate,
     })
-    if (!error) {
-      setAmount('')
-      setNote('')
-      setCategory('food')
-      setExpenseDate(localDateStr(new Date()))
-      setShowForm(false)
-      fetchData()
-    }
-    setSubmitting(false)
+  }
+
+  function startEdit(exp: Expense) {
+    setEditingExpense(exp)
+    setEditAmount(String(exp.amount))
+    setEditCategory(exp.category)
+    setEditNote(exp.note)
+    setEditDate(localDateStr(new Date(exp.created_at)))
+  }
+
+  function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingExpense) return
+    editExpenseMutation.mutate({
+      id: editingExpense.id,
+      amount: parseFloat(editAmount),
+      category: editCategory,
+      note: editNote,
+      date: editDate,
+    })
   }
 
   // ── Derived values ──────────────────────────────────────────────────────────
 
-  const periodRange = getPeriodRange(period, anchorDate)
   const periodLabel = formatPeriodLabel(period, periodRange.start, periodRange.end)
   const periodName = period === 'week' ? 'week' : 'month'
   const daysInPeriod = getDaysInPeriod(period, periodRange.start)
 
-  const periodTotal = expenses.reduce((sum, e) => sum + e.amount, 0)
-  const byCategory = CATEGORIES.map(cat => ({
-    ...cat,
-    total: expenses.filter(e => e.category === cat.value).reduce((sum, e) => sum + e.amount, 0),
-  }))
+  const periodTotal = expenses.reduce(function (sum, e) { return sum + e.amount }, 0)
+  const byCategory = CATEGORIES.map(function (cat) {
+    return {
+      ...cat,
+      total: expenses.filter(function (e) { return e.category === cat.value }).reduce(function (sum, e) { return sum + e.amount }, 0),
+    }
+  })
 
-  const incomeThisMonth = paychecks.reduce((sum, p) => sum + p.amount, 0)
-  const totalAllocated = allocations.reduce((s, a) => s + a.percentage, 0)
+  const incomeThisMonth = paychecks.reduce(function (sum, p) { return sum + p.amount }, 0)
+  const totalAllocated = allocations.reduce(function (s, a) { return s + a.percentage }, 0)
 
-  // Budget formula: weeklyBudget = (paycheck × unallocated%) ÷ weeksPerPeriod
-  // weekly=1, biweekly=2, monthly=4
   const today = new Date()
   const weeksPerPeriod = budget?.pay_frequency === 'weekly' ? 1 : budget?.pay_frequency === 'monthly' ? 4 : 2
   const latestPaycheckAmt = latestPaycheckRecord?.amount ?? 0
@@ -250,7 +303,7 @@ export default function Dashboard() {
   const remaining = periodLimit - periodTotal
   const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
 
-  // 7-day bar chart (today already declared above)
+  // 7-day bar chart
   const sevenDays = Array.from({ length: 7 }, function (_, i) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6 + i)
     return localDateStr(d)
@@ -264,11 +317,10 @@ export default function Dashboard() {
         .reduce(function (sum, e) { return sum + e.amount }, 0),
     }
   })
-  const maxDayTotal = Math.max(...dayTotals.map(d => d.total), 1)
+  const maxDayTotal = Math.max(...dayTotals.map(function (d) { return d.total }), 1)
   const todayStr = localDateStr(today)
   const chartTotal7d = chartExpenses.reduce(function (s, e) { return s + e.amount }, 0)
 
-  // AI insight (computed, non-AI)
   function getAiInsight() {
     if (periodLimit === 0) {
       return 'Log a paycheck and set up allocations on the Paycheck page to start tracking your spending budget.'
@@ -358,7 +410,6 @@ export default function Dashboard() {
           {/* 4-up KPI row */}
           <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
 
-            {/* KPI 1: Spent this period */}
             <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
               <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Spent this {periodName}</p>
               <p className='text-2xl font-bold text-gray-900'>${periodTotal.toFixed(2)}</p>
@@ -377,7 +428,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* KPI 2: Safe to spend */}
             <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
               <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Safe to Spend</p>
               {periodLimit > 0 ? (
@@ -399,7 +449,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* KPI 3: Income this month */}
             <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
               <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Income This Month</p>
               {incomeThisMonth > 0 ? (
@@ -419,7 +468,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* KPI 4: Allocated % */}
             <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
               <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Allocated</p>
               {allocations.length > 0 ? (
@@ -441,19 +489,18 @@ export default function Dashboard() {
 
           </div>
 
-          {/* Terp AI insight strip */}
+          {/* AllocateAI insight strip */}
           <div className='bg-sky-50 border border-sky-100 rounded-2xl px-5 py-4 flex items-center justify-between gap-4'>
             <div className='flex items-center gap-3 min-w-0'>
               <span className='text-lg flex-shrink-0'>💡</span>
               <p className='text-sm text-sky-800 font-medium leading-snug'>{getAiInsight()}</p>
             </div>
-            {/* TODO: wire up to Terp AI when AI features are built */}
             <button
               type='button'
               disabled
               className='flex-shrink-0 text-xs font-semibold text-sky-400 border border-sky-200 bg-white rounded-lg px-3 py-1.5 cursor-not-allowed opacity-60 whitespace-nowrap'
             >
-              Ask Terp AI
+              Ask AllocateAI
             </button>
           </div>
 
@@ -502,7 +549,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Paycheck allocation breakdown (read-only) */}
+              {/* Paycheck allocation breakdown */}
               <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
                 <div className='flex items-baseline justify-between mb-1'>
                   <p className='text-sm font-semibold text-gray-700'>Paycheck Allocation</p>
@@ -521,7 +568,6 @@ export default function Dashboard() {
                   </p>
                 ) : (
                   <>
-                    {/* Segmented allocation bar */}
                     <div className='w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex mb-4'>
                       {allocations.map(function (a, i) {
                         return (
@@ -537,7 +583,6 @@ export default function Dashboard() {
                       })}
                     </div>
 
-                    {/* Allocation rows */}
                     <div className='space-y-2.5'>
                       {allocations.map(function (a, i) {
                         return (
@@ -581,15 +626,19 @@ export default function Dashboard() {
                     {expenses.slice(0, 5).map(function (exp) {
                       const cat = CATEGORIES.find(function (c) { return c.value === exp.category })
                       return (
-                        <div key={exp.id} className='flex items-center gap-3'>
+                        <div
+                          key={exp.id}
+                          onClick={() => startEdit(exp)}
+                          className='flex items-center gap-3 cursor-pointer rounded-xl hover:bg-gray-100 -mx-2 px-2 py-1.5 transition-colors group'
+                        >
                           <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cat?.color ?? 'bg-gray-300'}`} />
                           <div className='flex-1 min-w-0'>
-                            <p className='text-sm text-gray-800 truncate'>{exp.note || cat?.label}</p>
+                            <p className='text-sm text-gray-800 truncate group-hover:underline'>{exp.note || cat?.label}</p>
                             <p className='text-xs text-gray-400'>
                               {cat?.label} · {new Date(exp.created_at).toLocaleDateString()}
                             </p>
                           </div>
-                          <p className='text-sm font-semibold text-gray-900'>${exp.amount.toFixed(2)}</p>
+                          <p className='text-sm font-semibold text-gray-900 group-hover:text-sky-600 transition-colors'>${exp.amount.toFixed(2)}</p>
                         </div>
                       )
                     })}
@@ -601,8 +650,6 @@ export default function Dashboard() {
 
             {/* ── Right column ── */}
             <div className='space-y-4'>
-
-              {/* Expense distribution donut */}
               <Distribution
                 items={byCategory}
                 periodName={periodName}
@@ -610,14 +657,101 @@ export default function Dashboard() {
                 budgetLimit={periodLimit}
                 remaining={remaining}
               />
-
             </div>
           </div>
 
         </div>
       </main>
 
-      {/* FAB — expands to pill on hover */}
+      {/* Edit expense modal */}
+      {editingExpense && (
+        <div
+          className='fixed inset-0 bg-black/40 flex items-center justify-center z-50'
+          onClick={() => setEditingExpense(null)}
+        >
+          <div
+            className='bg-white w-full max-w-md rounded-2xl p-6'
+            onClick={function (e) { e.stopPropagation() }}
+          >
+            <h2 className='text-lg font-bold text-gray-900 mb-4 text-center'>Edit expense</h2>
+            <form onSubmit={handleSaveEdit} className='space-y-4'>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>Amount ($)</label>
+                <input
+                  type='number'
+                  step='0.01'
+                  min='0'
+                  required
+                  autoFocus
+                  value={editAmount}
+                  onChange={e => setEditAmount(e.target.value)}
+                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>Category</label>
+                <div className='grid grid-cols-3 gap-2'>
+                  {CATEGORIES.map(function (cat) {
+                    return (
+                      <button
+                        key={cat.value}
+                        type='button'
+                        onClick={() => setEditCategory(cat.value)}
+                        className={`py-1.5 rounded-lg text-xs font-medium border transition-colors active:scale-[0.97] ${
+                          editCategory === cat.value
+                            ? 'border-sky-400 bg-sky-50 text-sky-700'
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>Note (optional)</label>
+                <input
+                  type='text'
+                  value={editNote}
+                  onChange={e => setEditNote(e.target.value)}
+                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                  placeholder='e.g. Chipotle, Metro card...'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>Date</label>
+                <input
+                  type='date'
+                  required
+                  value={editDate}
+                  max={localDateStr(new Date())}
+                  onChange={e => setEditDate(e.target.value)}
+                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                />
+              </div>
+              <div className='flex gap-2 pt-1'>
+                <button
+                  type='button'
+                  onClick={() => setEditingExpense(null)}
+                  className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors active:scale-[0.97]'
+                >
+                  Cancel
+                </button>
+                <button
+                  type='submit'
+                  disabled={editExpenseMutation.isPending}
+                  className='flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors active:scale-[0.97]'
+                >
+                  {editExpenseMutation.isPending ? 'Saving...' : 'Save changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* FAB */}
       <button
         onClick={() => setShowForm(true)}
         className='group fixed bottom-6 right-6 flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white rounded-full h-14 px-4 shadow-lg shadow-sky-200 overflow-hidden transition-[width,background-color] duration-300 ease-in-out w-14 hover:w-52 active:scale-[0.97]'
@@ -706,10 +840,10 @@ export default function Dashboard() {
                 </button>
                 <button
                   type='submit'
-                  disabled={submitting}
+                  disabled={addExpenseMutation.isPending}
                   className='flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-[transform,background-color] duration-150 active:scale-[0.97]'
                 >
-                  {submitting ? 'Saving...' : 'Add expense'}
+                  {addExpenseMutation.isPending ? 'Saving...' : 'Add expense'}
                 </button>
               </div>
             </form>

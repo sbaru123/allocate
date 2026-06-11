@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
@@ -29,113 +30,173 @@ type Allocation = {
   percentage: number
 }
 
+type PaycheckData = {
+  payFrequency: PayFrequency
+  paychecks: Paycheck[]
+  allocations: Allocation[]
+}
+
 const FREQ_LABELS: Record<PayFrequency, string> = {
   weekly: 'Weekly',
   biweekly: 'Bi-weekly',
   monthly: 'Monthly',
 }
 
+async function fetchPaycheckData(): Promise<PaycheckData> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const [budgetRes, paychecksRes, allocationsRes] = await Promise.all([
+    supabase.from('budgets').select('pay_frequency').eq('user_id', user.id).single(),
+    supabase.from('paychecks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('allocations').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+  ])
+
+  return {
+    payFrequency: (budgetRes.data?.pay_frequency as PayFrequency) ?? 'biweekly',
+    paychecks: paychecksRes.data ?? [],
+    allocations: allocationsRes.data ?? [],
+  }
+}
+
 export default function Paycheck() {
   const navigate = useNavigate()
-  const [payFrequency, setPayFrequency] = useState<PayFrequency>('biweekly')
-  const [freqSaved, setFreqSaved] = useState(false)
-  const [paychecks, setPaychecks] = useState<Paycheck[]>([])
+  const queryClient = useQueryClient()
+
+  // Form state
   const [paycheckAmount, setPaycheckAmount] = useState('')
   const [paycheckNote, setPaycheckNote] = useState('')
-  const [addingPaycheck, setAddingPaycheck] = useState(false)
-
-  const [allocations, setAllocations] = useState<Allocation[]>([])
   const [newLabel, setNewLabel] = useState('')
   const [newPct, setNewPct] = useState('')
-  const [addingAllocation, setAddingAllocation] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editLabel, setEditLabel] = useState('')
   const [editPct, setEditPct] = useState('')
+  const [freqSaved, setFreqSaved] = useState(false)
 
+  // Auth check
   useEffect(function () {
+    async function checkAuth() {
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) navigate('/login')
+    }
     checkAuth()
-    fetchSettings()
-  }, [])
+  }, [navigate])
 
-  async function checkAuth() {
-    const { data } = await supabase.auth.getUser()
-    if (!data.user) navigate('/login')
-  }
+  // Data query
+  const { data } = useQuery({
+    queryKey: ['paycheck'],
+    queryFn: fetchPaycheckData,
+    staleTime: 5 * 60 * 1000,
+  })
 
-  async function fetchSettings() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+  const payFrequency = data?.payFrequency ?? 'biweekly'
+  const paychecks = data?.paychecks ?? []
+  const allocations = data?.allocations ?? []
 
-    const [budgetRes, paychecksRes, allocationsRes] = await Promise.all([
-      supabase.from('budgets').select('pay_frequency').eq('user_id', user.id).single(),
-      supabase.from('paychecks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('allocations').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-    ])
+  // Mutations
+  const saveFrequencyMutation = useMutation({
+    mutationFn: async function (freq: PayFrequency) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+      await supabase.from('budgets').upsert(
+        { user_id: user.id, pay_frequency: freq },
+        { onConflict: 'user_id' }
+      )
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['paycheck'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setFreqSaved(true)
+      setTimeout(function () { setFreqSaved(false) }, 1500)
+    },
+  })
 
-    if (budgetRes.data?.pay_frequency) setPayFrequency(budgetRes.data.pay_frequency as PayFrequency)
-    if (paychecksRes.data) setPaychecks(paychecksRes.data)
-    if (allocationsRes.data) setAllocations(allocationsRes.data)
-  }
+  const addPaycheckMutation = useMutation({
+    mutationFn: async function (vars: { amount: number; note: string }) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+      const { error } = await supabase.from('paychecks').insert({
+        user_id: user.id,
+        amount: vars.amount,
+        note: vars.note,
+      })
+      if (error) throw error
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['paycheck'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setPaycheckAmount('')
+      setPaycheckNote('')
+    },
+  })
 
-  async function saveFrequency(freq: PayFrequency) {
-    setPayFrequency(freq)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('budgets').upsert(
-      { user_id: user.id, pay_frequency: freq },
-      { onConflict: 'user_id' }
-    )
-    setFreqSaved(true)
-    setTimeout(function () { setFreqSaved(false) }, 1500)
-  }
+  const deletePaycheckMutation = useMutation({
+    mutationFn: async function (id: string) {
+      await supabase.from('paychecks').delete().eq('id', id)
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['paycheck'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
 
-  async function addPaycheck(e: React.FormEvent) {
+  const addAllocationMutation = useMutation({
+    mutationFn: async function (vars: { label: string; percentage: number }) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+      const { error } = await supabase.from('allocations').insert({
+        user_id: user.id,
+        label: vars.label,
+        percentage: vars.percentage,
+      })
+      if (error) throw error
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['paycheck'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setNewLabel('')
+      setNewPct('')
+    },
+  })
+
+  const updateAllocationMutation = useMutation({
+    mutationFn: async function (vars: { id: string; label: string; percentage: number }) {
+      const { error } = await supabase.from('allocations')
+        .update({ label: vars.label, percentage: vars.percentage })
+        .eq('id', vars.id)
+      if (error) throw error
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['paycheck'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setEditingId(null)
+    },
+  })
+
+  const deleteAllocationMutation = useMutation({
+    mutationFn: async function (id: string) {
+      await supabase.from('allocations').delete().eq('id', id)
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['paycheck'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+
+  // Handlers
+  function handleAddPaycheck(e: React.FormEvent) {
     e.preventDefault()
-    setAddingPaycheck(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data } = await supabase.from('paychecks').insert({
-      user_id: user.id,
+    addPaycheckMutation.mutate({
       amount: parseFloat(paycheckAmount),
       note: paycheckNote,
-    }).select().single()
-
-    if (data) setPaychecks(prev => [data, ...prev])
-    setPaycheckAmount('')
-    setPaycheckNote('')
-    setAddingPaycheck(false)
+    })
   }
 
-  async function deletePaycheck(id: string) {
-    await supabase.from('paychecks').delete().eq('id', id)
-    setPaychecks(prev => prev.filter(p => p.id !== id))
-  }
-
-  async function addAllocation(e: React.FormEvent) {
+  function handleAddAllocation(e: React.FormEvent) {
     e.preventDefault()
     const pct = parseFloat(newPct)
     if (totalAllocated + pct > 100) return
-    setAddingAllocation(true)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data } = await supabase.from('allocations').insert({
-      user_id: user.id,
-      label: newLabel.trim(),
-      percentage: pct,
-    }).select().single()
-
-    if (data) setAllocations(prev => [...prev, data])
-    setNewLabel('')
-    setNewPct('')
-    setAddingAllocation(false)
-  }
-
-  async function deleteAllocation(id: string) {
-    await supabase.from('allocations').delete().eq('id', id)
-    setAllocations(prev => prev.filter(a => a.id !== id))
+    addAllocationMutation.mutate({ label: newLabel.trim(), percentage: pct })
   }
 
   function startEdit(a: Allocation) {
@@ -144,22 +205,18 @@ export default function Paycheck() {
     setEditPct(String(a.percentage))
   }
 
-  async function saveEdit(id: string) {
+  function handleSaveEdit(id: string) {
     const pct = parseFloat(editPct)
-    const otherTotal = allocations.filter(a => a.id !== id).reduce((s, a) => s + a.percentage, 0)
+    const otherTotal = allocations.filter(function (a) { return a.id !== id }).reduce(function (s, a) { return s + a.percentage }, 0)
     if (otherTotal + pct > 100) return
-
-    await supabase.from('allocations').update({ label: editLabel.trim(), percentage: pct }).eq('id', id)
-    setAllocations(prev => prev.map(a => a.id === id ? { ...a, label: editLabel.trim(), percentage: pct } : a))
-    setEditingId(null)
+    updateAllocationMutation.mutate({ id, label: editLabel.trim(), percentage: pct })
   }
 
-  const totalIncome = paychecks.reduce((sum, p) => sum + p.amount, 0)
+  // Derived
+  const totalIncome = paychecks.reduce(function (sum, p) { return sum + p.amount }, 0)
   const latestPaycheck = paychecks[0]?.amount ?? 0
-  const totalAllocated = allocations.reduce((s, a) => s + a.percentage, 0)
+  const totalAllocated = allocations.reduce(function (s, a) { return s + a.percentage }, 0)
   const unallocated = 100 - totalAllocated
-
-  // Estimated weekly spending budget: (paycheck × unallocated%) ÷ weeksPerPeriod
   const weeksPerPeriod = payFrequency === 'weekly' ? 1 : payFrequency === 'monthly' ? 4 : 2
   const weeklySpendingBudget = latestPaycheck > 0
     ? (latestPaycheck * Math.max(unallocated, 0) / 100) / weeksPerPeriod
@@ -189,7 +246,7 @@ export default function Paycheck() {
                   <button
                     key={freq}
                     type='button'
-                    onClick={() => saveFrequency(freq)}
+                    onClick={() => saveFrequencyMutation.mutate(freq)}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                       payFrequency === freq
                         ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
@@ -216,7 +273,7 @@ export default function Paycheck() {
               <h2 className='text-sm font-semibold text-gray-800'>Log a paycheck</h2>
               <span className='text-xs text-gray-400'>Total logged: ${totalIncome.toFixed(2)}</span>
             </div>
-            <form onSubmit={addPaycheck} className='space-y-3'>
+            <form onSubmit={handleAddPaycheck} className='space-y-3'>
               <div className='flex gap-2'>
                 <input
                   type='number'
@@ -238,10 +295,10 @@ export default function Paycheck() {
               </div>
               <button
                 type='submit'
-                disabled={addingPaycheck}
+                disabled={addPaycheckMutation.isPending}
                 className='w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors'
               >
-                {addingPaycheck ? 'Adding...' : 'Add paycheck'}
+                {addPaycheckMutation.isPending ? 'Adding...' : 'Add paycheck'}
               </button>
             </form>
 
@@ -258,7 +315,7 @@ export default function Paycheck() {
                         </p>
                       </div>
                       <button
-                        onClick={() => deletePaycheck(p.id)}
+                        onClick={() => deletePaycheckMutation.mutate(p.id)}
                         className='text-gray-300 hover:text-red-400 text-xs transition-colors'
                       >
                         ✕
@@ -280,7 +337,6 @@ export default function Paycheck() {
             </div>
             <p className='text-xs text-gray-400 mb-4'>Distribute your paycheck into goals. Runs every paycheck.</p>
 
-            {/* Segmented progress bar */}
             <div className='mb-4'>
               <div className='flex justify-between text-xs mb-1'>
                 <span className='text-gray-500'>{totalAllocated.toFixed(0)}% allocated</span>
@@ -304,7 +360,6 @@ export default function Paycheck() {
               </div>
             </div>
 
-            {/* Allocation rows */}
             <div className='space-y-2 mb-4'>
               {allocations.length === 0 && (
                 <p className='text-sm text-gray-400'>No allocations yet. Add one below.</p>
@@ -332,8 +387,19 @@ export default function Paycheck() {
                           />
                           <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400'>%</span>
                         </div>
-                        <button onClick={() => saveEdit(a.id)} className='text-sky-600 hover:text-sky-800 text-xs font-semibold transition-colors'>Save</button>
-                        <button onClick={() => setEditingId(null)} className='text-gray-400 hover:text-gray-600 text-xs transition-colors'>Cancel</button>
+                        <button
+                          onClick={() => handleSaveEdit(a.id)}
+                          disabled={updateAllocationMutation.isPending}
+                          className='text-sky-600 hover:text-sky-800 text-xs font-semibold transition-colors disabled:opacity-50'
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className='text-gray-400 hover:text-gray-600 text-xs transition-colors'
+                        >
+                          Cancel
+                        </button>
                       </>
                     ) : (
                       <>
@@ -351,7 +417,7 @@ export default function Paycheck() {
                           </span>
                         )}
                         <button onClick={() => startEdit(a)} className='text-gray-300 hover:text-sky-500 text-xs transition-colors ml-1'>✎</button>
-                        <button onClick={() => deleteAllocation(a.id)} className='text-gray-300 hover:text-red-400 text-xs transition-colors'>✕</button>
+                        <button onClick={() => deleteAllocationMutation.mutate(a.id)} className='text-gray-300 hover:text-red-400 text-xs transition-colors'>✕</button>
                       </>
                     )}
                   </div>
@@ -359,8 +425,7 @@ export default function Paycheck() {
               })}
             </div>
 
-            {/* Add new allocation */}
-            <form onSubmit={addAllocation} className='flex gap-2 items-center border-t border-gray-100 pt-4'>
+            <form onSubmit={handleAddAllocation} className='flex gap-2 items-center border-t border-gray-100 pt-4'>
               <input
                 type='text'
                 required
@@ -385,7 +450,7 @@ export default function Paycheck() {
               </div>
               <button
                 type='submit'
-                disabled={addingAllocation || totalAllocated >= 100}
+                disabled={addAllocationMutation.isPending || totalAllocated >= 100}
                 className='bg-sky-600 hover:bg-sky-700 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex-shrink-0'
               >
                 Add
