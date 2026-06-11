@@ -4,15 +4,17 @@ import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
 const PALETTE = [
-  { bg: 'bg-sky-400',    hex: '#38bdf8' },
-  { bg: 'bg-violet-400', hex: '#a78bfa' },
-  { bg: 'bg-emerald-400',hex: '#34d399' },
-  { bg: 'bg-orange-400', hex: '#fb923c' },
-  { bg: 'bg-pink-400',   hex: '#f472b6' },
-  { bg: 'bg-yellow-400', hex: '#facc15' },
-  { bg: 'bg-teal-400',   hex: '#2dd4bf' },
-  { bg: 'bg-red-400',    hex: '#f87171' },
+  { bg: 'bg-sky-400',     hex: '#38bdf8' },
+  { bg: 'bg-violet-400',  hex: '#a78bfa' },
+  { bg: 'bg-emerald-400', hex: '#34d399' },
+  { bg: 'bg-orange-400',  hex: '#fb923c' },
+  { bg: 'bg-pink-400',    hex: '#f472b6' },
+  { bg: 'bg-yellow-400',  hex: '#facc15' },
+  { bg: 'bg-teal-400',    hex: '#2dd4bf' },
+  { bg: 'bg-red-400',     hex: '#f87171' },
 ]
+
+type PayFrequency = 'weekly' | 'biweekly' | 'monthly'
 
 type Paycheck = {
   id: string
@@ -27,16 +29,20 @@ type Allocation = {
   percentage: number
 }
 
+const FREQ_LABELS: Record<PayFrequency, string> = {
+  weekly: 'Weekly',
+  biweekly: 'Bi-weekly',
+  monthly: 'Monthly',
+}
+
 export default function Paycheck() {
   const navigate = useNavigate()
-  const [weeklyLimit, setWeeklyLimit] = useState('')
-  const [savedLimit, setSavedLimit] = useState<number | null>(null)
+  const [payFrequency, setPayFrequency] = useState<PayFrequency>('biweekly')
+  const [freqSaved, setFreqSaved] = useState(false)
   const [paychecks, setPaychecks] = useState<Paycheck[]>([])
   const [paycheckAmount, setPaycheckAmount] = useState('')
   const [paycheckNote, setPaycheckNote] = useState('')
-  const [savingBudget, setSavingBudget] = useState(false)
   const [addingPaycheck, setAddingPaycheck] = useState(false)
-  const [budgetSaved, setBudgetSaved] = useState(false)
 
   const [allocations, setAllocations] = useState<Allocation[]>([])
   const [newLabel, setNewLabel] = useState('')
@@ -61,34 +67,26 @@ export default function Paycheck() {
     if (!user) return
 
     const [budgetRes, paychecksRes, allocationsRes] = await Promise.all([
-      supabase.from('budgets').select('weekly_limit').eq('user_id', user.id).single(),
+      supabase.from('budgets').select('pay_frequency').eq('user_id', user.id).single(),
       supabase.from('paychecks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('allocations').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
     ])
 
-    if (budgetRes.data) {
-      setSavedLimit(budgetRes.data.weekly_limit)
-      setWeeklyLimit(String(budgetRes.data.weekly_limit))
-    }
+    if (budgetRes.data?.pay_frequency) setPayFrequency(budgetRes.data.pay_frequency as PayFrequency)
     if (paychecksRes.data) setPaychecks(paychecksRes.data)
     if (allocationsRes.data) setAllocations(allocationsRes.data)
   }
 
-  async function saveBudget(e: React.FormEvent) {
-    e.preventDefault()
-    setSavingBudget(true)
+  async function saveFrequency(freq: PayFrequency) {
+    setPayFrequency(freq)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-
     await supabase.from('budgets').upsert(
-      { user_id: user.id, weekly_limit: parseFloat(weeklyLimit) },
+      { user_id: user.id, pay_frequency: freq },
       { onConflict: 'user_id' }
     )
-
-    setSavedLimit(parseFloat(weeklyLimit))
-    setBudgetSaved(true)
-    setTimeout(() => setBudgetSaved(false), 2000)
-    setSavingBudget(false)
+    setFreqSaved(true)
+    setTimeout(function () { setFreqSaved(false) }, 1500)
   }
 
   async function addPaycheck(e: React.FormEvent) {
@@ -159,7 +157,13 @@ export default function Paycheck() {
   const totalIncome = paychecks.reduce((sum, p) => sum + p.amount, 0)
   const latestPaycheck = paychecks[0]?.amount ?? 0
   const totalAllocated = allocations.reduce((s, a) => s + a.percentage, 0)
-  const remaining = 100 - totalAllocated
+  const unallocated = 100 - totalAllocated
+
+  // Estimated weekly spending budget: (paycheck × unallocated%) ÷ weeksPerPeriod
+  const weeksPerPeriod = payFrequency === 'weekly' ? 1 : payFrequency === 'monthly' ? 4 : 2
+  const weeklySpendingBudget = latestPaycheck > 0
+    ? (latestPaycheck * Math.max(unallocated, 0) / 100) / weeksPerPeriod
+    : 0
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -169,34 +173,41 @@ export default function Paycheck() {
         <div className='w-full max-w-2xl space-y-5'>
           <div>
             <h1 className='text-xl font-bold text-gray-900'>Paycheck</h1>
-            <p className='text-sm text-gray-500'>Set your budget, log income, and allocate your earnings.</p>
+            <p className='text-sm text-gray-500'>Set your pay frequency, log income, and allocate your earnings.</p>
           </div>
 
-          {/* Weekly budget */}
+          {/* Pay frequency */}
           <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-            <h2 className='text-sm font-semibold text-gray-800 mb-1'>Weekly budget</h2>
-            {savedLimit !== null && (
-              <p className='text-xs text-gray-400 mb-3'>Current limit: ${savedLimit.toFixed(2)}/week</p>
+            <div className='flex items-baseline justify-between mb-1'>
+              <h2 className='text-sm font-semibold text-gray-800'>Pay frequency</h2>
+              {freqSaved && <span className='text-xs text-emerald-500 font-medium'>Saved ✓</span>}
+            </div>
+            <p className='text-xs text-gray-400 mb-4'>How often do you receive a paycheck?</p>
+            <div className='flex gap-2'>
+              {(['weekly', 'biweekly', 'monthly'] as const).map(function (freq) {
+                return (
+                  <button
+                    key={freq}
+                    type='button'
+                    onClick={() => saveFrequency(freq)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      payFrequency === freq
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {FREQ_LABELS[freq]}
+                  </button>
+                )
+              })}
+            </div>
+            {weeklySpendingBudget > 0 && (
+              <p className='text-xs text-gray-400 mt-3'>
+                Est. weekly spending budget:{' '}
+                <span className='font-semibold text-gray-700'>${weeklySpendingBudget.toFixed(2)}</span>
+                {' '}— ${latestPaycheck.toFixed(2)} paycheck with {unallocated.toFixed(0)}% unallocated.
+              </p>
             )}
-            <form onSubmit={saveBudget} className='flex gap-2'>
-              <input
-                type='number'
-                step='0.01'
-                min='0'
-                required
-                value={weeklyLimit}
-                onChange={e => setWeeklyLimit(e.target.value)}
-                className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
-                placeholder='e.g. 200'
-              />
-              <button
-                type='submit'
-                disabled={savingBudget}
-                className='bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors'
-              >
-                {budgetSaved ? 'Saved!' : 'Save'}
-              </button>
-            </form>
           </div>
 
           {/* Log a paycheck */}
@@ -236,23 +247,25 @@ export default function Paycheck() {
 
             {paychecks.length > 0 && (
               <div className='mt-4 divide-y divide-gray-100'>
-                {paychecks.map(p => (
-                  <div key={p.id} className='flex items-center py-2 gap-3'>
-                    <div className='flex-1 min-w-0'>
-                      <p className='text-sm text-gray-800'>${p.amount.toFixed(2)}</p>
-                      <p className='text-xs text-gray-400'>
-                        {p.note && `${p.note} · `}
-                        {new Date(p.created_at).toLocaleDateString()}
-                      </p>
+                {paychecks.map(function (p) {
+                  return (
+                    <div key={p.id} className='flex items-center py-2 gap-3'>
+                      <div className='flex-1 min-w-0'>
+                        <p className='text-sm text-gray-800'>${p.amount.toFixed(2)}</p>
+                        <p className='text-xs text-gray-400'>
+                          {p.note && `${p.note} · `}
+                          {new Date(p.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deletePaycheck(p.id)}
+                        className='text-gray-300 hover:text-red-400 text-xs transition-colors'
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <button
-                      onClick={() => deletePaycheck(p.id)}
-                      className='text-gray-300 hover:text-red-400 text-xs transition-colors'
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -267,23 +280,27 @@ export default function Paycheck() {
             </div>
             <p className='text-xs text-gray-400 mb-4'>Distribute your paycheck into goals. Runs every paycheck.</p>
 
-            {/* Progress bar — segmented by allocation color */}
+            {/* Segmented progress bar */}
             <div className='mb-4'>
               <div className='flex justify-between text-xs mb-1'>
                 <span className='text-gray-500'>{totalAllocated.toFixed(0)}% allocated</span>
-                <span className={remaining < 0 ? 'text-red-500' : 'text-gray-400'}>{remaining.toFixed(0)}% unallocated</span>
+                <span className={unallocated < 0 ? 'text-red-500' : 'text-gray-400'}>
+                  {unallocated.toFixed(0)}% unallocated
+                </span>
               </div>
               <div className='w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex'>
-                {allocations.map((a, i) => (
-                  <div
-                    key={a.id}
-                    className='h-full transition-all duration-500'
-                    style={{
-                      width: `${Math.min(a.percentage, 100)}%`,
-                      backgroundColor: PALETTE[i % PALETTE.length].hex,
-                    }}
-                  />
-                ))}
+                {allocations.map(function (a, i) {
+                  return (
+                    <div
+                      key={a.id}
+                      className='h-full transition-all duration-500'
+                      style={{
+                        width: `${Math.min(a.percentage, 100)}%`,
+                        backgroundColor: PALETTE[i % PALETTE.length].hex,
+                      }}
+                    />
+                  )
+                })}
               </div>
             </div>
 
@@ -292,52 +309,54 @@ export default function Paycheck() {
               {allocations.length === 0 && (
                 <p className='text-sm text-gray-400'>No allocations yet. Add one below.</p>
               )}
-              {allocations.map((a, i) => (
-                <div key={a.id} className='flex items-center gap-2'>
-                  {editingId === a.id ? (
-                    <>
-                      <input
-                        value={editLabel}
-                        onChange={e => setEditLabel(e.target.value)}
-                        className='flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400'
-                        placeholder='Label'
-                      />
-                      <div className='relative w-24 flex-shrink-0'>
+              {allocations.map(function (a, i) {
+                return (
+                  <div key={a.id} className='flex items-center gap-2'>
+                    {editingId === a.id ? (
+                      <>
                         <input
-                          type='number'
-                          min='0.1'
-                          max='100'
-                          step='0.1'
-                          value={editPct}
-                          onChange={e => setEditPct(e.target.value)}
-                          className='w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 pr-6'
+                          value={editLabel}
+                          onChange={e => setEditLabel(e.target.value)}
+                          className='flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400'
+                          placeholder='Label'
                         />
-                        <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400'>%</span>
-                      </div>
-                      <button onClick={() => saveEdit(a.id)} className='text-sky-600 hover:text-sky-800 text-xs font-semibold transition-colors'>Save</button>
-                      <button onClick={() => setEditingId(null)} className='text-gray-400 hover:text-gray-600 text-xs transition-colors'>Cancel</button>
-                    </>
-                  ) : (
-                    <>
-                      <div className='flex-1 flex items-center gap-2 min-w-0'>
-                        <div
-                          className='w-2 h-2 rounded-full flex-shrink-0'
-                          style={{ backgroundColor: PALETTE[i % PALETTE.length].hex }}
-                        />
-                        <span className='text-sm text-gray-800 truncate'>{a.label}</span>
-                      </div>
-                      <span className='text-sm font-semibold text-gray-700 w-12 text-right flex-shrink-0'>{a.percentage}%</span>
-                      {latestPaycheck > 0 && (
-                        <span className='text-xs text-gray-400 w-16 text-right flex-shrink-0'>
-                          ${((a.percentage / 100) * latestPaycheck).toFixed(2)}
-                        </span>
-                      )}
-                      <button onClick={() => startEdit(a)} className='text-gray-300 hover:text-sky-500 text-xs transition-colors ml-1'>✎</button>
-                      <button onClick={() => deleteAllocation(a.id)} className='text-gray-300 hover:text-red-400 text-xs transition-colors'>✕</button>
-                    </>
-                  )}
-                </div>
-              ))}
+                        <div className='relative w-24 flex-shrink-0'>
+                          <input
+                            type='number'
+                            min='0.1'
+                            max='100'
+                            step='0.1'
+                            value={editPct}
+                            onChange={e => setEditPct(e.target.value)}
+                            className='w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 pr-6'
+                          />
+                          <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400'>%</span>
+                        </div>
+                        <button onClick={() => saveEdit(a.id)} className='text-sky-600 hover:text-sky-800 text-xs font-semibold transition-colors'>Save</button>
+                        <button onClick={() => setEditingId(null)} className='text-gray-400 hover:text-gray-600 text-xs transition-colors'>Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <div className='flex-1 flex items-center gap-2 min-w-0'>
+                          <div
+                            className='w-2 h-2 rounded-full flex-shrink-0'
+                            style={{ backgroundColor: PALETTE[i % PALETTE.length].hex }}
+                          />
+                          <span className='text-sm text-gray-800 truncate'>{a.label}</span>
+                        </div>
+                        <span className='text-sm font-semibold text-gray-700 w-12 text-right flex-shrink-0'>{a.percentage}%</span>
+                        {latestPaycheck > 0 && (
+                          <span className='text-xs text-gray-400 w-16 text-right flex-shrink-0'>
+                            ${((a.percentage / 100) * latestPaycheck).toFixed(2)}
+                          </span>
+                        )}
+                        <button onClick={() => startEdit(a)} className='text-gray-300 hover:text-sky-500 text-xs transition-colors ml-1'>✎</button>
+                        <button onClick={() => deleteAllocation(a.id)} className='text-gray-300 hover:text-red-400 text-xs transition-colors'>✕</button>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Add new allocation */}
@@ -377,6 +396,7 @@ export default function Paycheck() {
               <p className='text-xs text-red-500 mt-2'>Total exceeds 100%. Please adjust your allocations.</p>
             )}
           </div>
+
         </div>
       </main>
     </div>

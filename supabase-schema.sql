@@ -63,3 +63,8 @@ create policy "Users can manage their own allocations"
   on allocations for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Migration: add pay_frequency to budgets (run in Supabase SQL editor)
+alter table budgets
+  add column if not exists pay_frequency text not null default 'biweekly'
+    check (pay_frequency in ('weekly', 'biweekly', 'monthly'));
