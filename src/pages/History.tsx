@@ -144,7 +144,7 @@ export default function History() {
               className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
                 filter === 'all'
                   ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-sky-100'
               }`}
             >
               All
@@ -157,7 +157,7 @@ export default function History() {
                   className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
                     filter === cat.value
                       ? 'bg-sky-600 text-white border-sky-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-sky-100'
                   }`}
                 >
                   {cat.label}
