@@ -1,4 +1,4 @@
-# Terp Budget
+# Allocate
 
 A personal finance OS built for college students and interns. Not just a tracker — a tool for intentional money management.
 
