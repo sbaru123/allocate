@@ -32,8 +32,8 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-sky-50 text-sky-700'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                    ? 'bg-sky-100 text-sky-700'
+                    : 'text-gray-500 hover:bg-sky-50 hover:text-gray-800'
                 }`
               }
             >
@@ -46,7 +46,7 @@ export default function Sidebar() {
           <button
             type='button'
             onClick={handleSignOut}
-            className='w-full rounded-lg px-3 py-2 text-center text-sm font-medium text-black-200 transition-colors hover:bg-gray-200 hover:text-black-700'
+            className='w-full rounded-full px-4 py-2 text-center text-sm font-medium bg-sky-600 text-white transition-colors hover:bg-sky-700 hover:text-white'
           >
             Sign out
           </button>
