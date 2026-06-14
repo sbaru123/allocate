@@ -1,38 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
+import type { Expense, Allocation } from '@/types'
 import Distribution from '@/components/ExpenseBreakdown'
+import SevenDayChart from '@/components/SevenDayChart'
+import PaycheckAllocation from '@/components/PaycheckAllocation'
+import RecentActivity from '@/components/RecentActivity'
+import ExpensePopup from '@/components/ExpensePopup'
 import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
-const CATEGORIES: { value: Category; label: string; color: string; chartColor: string }[] = [
+const CATEGORIES: { value: string; label: string; color: string; chartColor: string }[] = [
   { value: 'food',          label: 'Food & Dining',  color: 'bg-orange-400', chartColor: '#fb923c' },
   { value: 'transport',     label: 'Transport',       color: 'bg-blue-400',   chartColor: '#60a5fa' },
   { value: 'entertainment', label: 'Entertainment',   color: 'bg-purple-400', chartColor: '#c084fc' },
   { value: 'housing',       label: 'Housing',         color: 'bg-yellow-400', chartColor: '#facc15' },
   { value: 'other',         label: 'Other',           color: 'bg-gray-400',   chartColor: '#9ca3af' },
 ]
-
-const PALETTE = [
-  { hex: '#38bdf8' },
-  { hex: '#a78bfa' },
-  { hex: '#34d399' },
-  { hex: '#fb923c' },
-  { hex: '#f472b6' },
-  { hex: '#facc15' },
-  { hex: '#2dd4bf' },
-  { hex: '#f87171' },
-]
-
-type Category = 'food' | 'transport' | 'entertainment' | 'housing' | 'other'
-
-type Expense = {
-  id: string
-  amount: number
-  category: Category
-  note: string
-  created_at: string
-}
 
 type PayFrequency = 'weekly' | 'biweekly' | 'monthly'
 
@@ -45,12 +29,6 @@ type Paycheck = {
   amount: number
   note: string
   created_at: string
-}
-
-type Allocation = {
-  id: string
-  label: string
-  percentage: number
 }
 
 type Period = 'week' | 'month'
@@ -86,9 +64,9 @@ function formatPeriodLabel(period: Period, start: Date, end: Date) {
   }
   const weekEnd = new Date(end)
   weekEnd.setDate(end.getDate() - 1)
-  const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const endLabel = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  return `${startLabel} – ${endLabel}`
+  const s = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const e = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${s} – ${e}`
 }
 
 function getDaysInPeriod(period: Period, start: Date) {
@@ -139,28 +117,16 @@ async function fetchDashboardData(period: Period, periodStart: Date): Promise<Da
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
 
   // UI state
   const [period, setPeriod] = useState<Period>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [userName, setUserName] = useState('')
 
-  // Log expense modal
+  // Modal state
   const [showForm, setShowForm] = useState(false)
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState<Category>('food')
-  const [note, setNote] = useState('')
-  const [expenseDate, setExpenseDate] = useState(() => localDateStr(new Date()))
-
-  // Edit expense modal
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-  const [editAmount, setEditAmount] = useState('')
-  const [editCategory, setEditCategory] = useState<Category>('food')
-  const [editNote, setEditNote] = useState('')
-  const [editDate, setEditDate] = useState('')
 
-  // Auth check
   useEffect(function () {
     async function loadUser() {
       const { data } = await supabase.auth.getUser()
@@ -170,66 +136,21 @@ export default function Dashboard() {
     loadUser()
   }, [navigate])
 
-  // Compute stable period start for query key
   const periodRange = getPeriodRange(period, anchorDate)
   const periodStartStr = localDateStr(periodRange.start)
 
-  // Data query — cached for 5 min, instant on revisit
   const { data: dashData } = useQuery({
     queryKey: ['dashboard', period, periodStartStr],
     queryFn: function () { return fetchDashboardData(period, periodRange.start) },
     staleTime: 5 * 60 * 1000,
   })
 
-  // Destructure with defaults so JSX never sees undefined
   const expenses = dashData?.expenses ?? []
   const chartExpenses = dashData?.chartExpenses ?? []
   const budget = dashData?.budget ?? null
   const paychecks = dashData?.paychecks ?? []
   const allocations = dashData?.allocations ?? []
   const latestPaycheckRecord = dashData?.latestPaycheckRecord ?? null
-
-  // Mutations
-  const addExpenseMutation = useMutation({
-    mutationFn: async function (vars: { amount: number; category: Category; note: string; date: string }) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-      const { error } = await supabase.from('expenses').insert({
-        user_id: user.id,
-        amount: vars.amount,
-        category: vars.category,
-        note: vars.note,
-        created_at: new Date(vars.date + 'T12:00:00').toISOString(),
-      })
-      if (error) throw error
-    },
-    onSuccess: function () {
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['history'] })
-      setAmount('')
-      setNote('')
-      setCategory('food')
-      setExpenseDate(localDateStr(new Date()))
-      setShowForm(false)
-    },
-  })
-
-  const editExpenseMutation = useMutation({
-    mutationFn: async function (vars: { id: string; amount: number; category: Category; note: string; date: string }) {
-      const { error } = await supabase.from('expenses').update({
-        amount: vars.amount,
-        category: vars.category,
-        note: vars.note,
-        created_at: new Date(vars.date + 'T12:00:00').toISOString(),
-      }).eq('id', vars.id)
-      if (error) throw error
-    },
-    onSuccess: function () {
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['history'] })
-      setEditingExpense(null)
-    },
-  })
 
   function movePeriod(direction: -1 | 1) {
     setAnchorDate(function (prev) {
@@ -247,34 +168,9 @@ export default function Dashboard() {
     setAnchorDate(new Date())
   }
 
-  function handleAddExpense(e: React.FormEvent) {
-    e.preventDefault()
-    addExpenseMutation.mutate({
-      amount: parseFloat(amount),
-      category,
-      note,
-      date: expenseDate,
-    })
-  }
-
-  function startEdit(exp: Expense) {
-    setEditingExpense(exp)
-    setEditAmount(String(exp.amount))
-    setEditCategory(exp.category)
-    setEditNote(exp.note)
-    setEditDate(localDateStr(new Date(exp.created_at)))
-  }
-
-  function handleSaveEdit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingExpense) return
-    editExpenseMutation.mutate({
-      id: editingExpense.id,
-      amount: parseFloat(editAmount),
-      category: editCategory,
-      note: editNote,
-      date: editDate,
-    })
+  function closeModal() {
+    setShowForm(false)
+    setEditingExpense(null)
   }
 
   // ── Derived values ──────────────────────────────────────────────────────────
@@ -287,39 +183,22 @@ export default function Dashboard() {
   const byCategory = CATEGORIES.map(function (cat) {
     return {
       ...cat,
-      total: expenses.filter(function (e) { return e.category === cat.value }).reduce(function (sum, e) { return sum + e.amount }, 0),
+      total: expenses
+        .filter(function (e) { return e.category === cat.value })
+        .reduce(function (sum, e) { return sum + e.amount }, 0),
     }
   })
 
   const incomeThisMonth = paychecks.reduce(function (sum, p) { return sum + p.amount }, 0)
   const totalAllocated = allocations.reduce(function (s, a) { return s + a.percentage }, 0)
-
-  const today = new Date()
-  const weeksPerPeriod = budget?.pay_frequency === 'weekly' ? 1 : budget?.pay_frequency === 'monthly' ? 4 : 2
   const latestPaycheckAmt = latestPaycheckRecord?.amount ?? 0
+
+  const weeksPerPeriod = budget?.pay_frequency === 'weekly' ? 1 : budget?.pay_frequency === 'monthly' ? 4 : 2
   const unallocatedFraction = Math.max(100 - totalAllocated, 0) / 100
   const weeklyBudget = latestPaycheckAmt > 0 ? (latestPaycheckAmt * unallocatedFraction) / weeksPerPeriod : 0
   const periodLimit = period === 'week' ? weeklyBudget : weeklyBudget * (daysInPeriod / 7)
   const remaining = periodLimit - periodTotal
   const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
-
-  // 7-day bar chart
-  const sevenDays = Array.from({ length: 7 }, function (_, i) {
-    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6 + i)
-    return localDateStr(d)
-  })
-  const dayTotals = sevenDays.map(function (dateStr) {
-    return {
-      dateStr,
-      label: new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
-      total: chartExpenses
-        .filter(function (e) { return localDateStr(new Date(e.created_at)) === dateStr })
-        .reduce(function (sum, e) { return sum + e.amount }, 0),
-    }
-  })
-  const maxDayTotal = Math.max(...dayTotals.map(function (d) { return d.total }), 1)
-  const todayStr = localDateStr(today)
-  const chartTotal7d = chartExpenses.reduce(function (s, e) { return s + e.amount }, 0)
 
   function getAiInsight() {
     if (periodLimit === 0) {
@@ -409,7 +288,6 @@ export default function Dashboard() {
 
           {/* 4-up KPI row */}
           <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
-
             <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
               <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Spent this {periodName}</p>
               <p className='text-2xl font-bold text-gray-900'>${periodTotal.toFixed(2)}</p>
@@ -442,9 +320,7 @@ export default function Dashboard() {
               ) : (
                 <>
                   <p className='text-2xl font-bold text-gray-300'>—</p>
-                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>
-                    Log a paycheck →
-                  </Link>
+                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Log a paycheck →</Link>
                 </>
               )}
             </div>
@@ -454,16 +330,12 @@ export default function Dashboard() {
               {incomeThisMonth > 0 ? (
                 <>
                   <p className='text-2xl font-bold text-gray-900'>${incomeThisMonth.toFixed(2)}</p>
-                  <p className='text-xs text-gray-400 mt-1'>
-                    Last paycheck: ${latestPaycheckAmt.toFixed(2)}
-                  </p>
+                  <p className='text-xs text-gray-400 mt-1'>Last paycheck: ${latestPaycheckAmt.toFixed(2)}</p>
                 </>
               ) : (
                 <>
                   <p className='text-2xl font-bold text-gray-300'>—</p>
-                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>
-                    Log a paycheck →
-                  </Link>
+                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Log a paycheck →</Link>
                 </>
               )}
             </div>
@@ -480,13 +352,10 @@ export default function Dashboard() {
               ) : (
                 <>
                   <p className='text-2xl font-bold text-gray-300'>—</p>
-                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>
-                    Add allocations →
-                  </Link>
+                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Add allocations →</Link>
                 </>
               )}
             </div>
-
           </div>
 
           {/* AllocateAI insight strip */}
@@ -509,143 +378,17 @@ export default function Dashboard() {
 
             {/* ── Left column ── */}
             <div className='space-y-4'>
-
-              {/* 7-day spending bar chart */}
-              <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-                <div className='flex items-center justify-between mb-4'>
-                  <div>
-                    <p className='text-sm font-semibold text-gray-700'>7-Day Spending</p>
-                    <p className='text-xs text-gray-400'>Rolling last 7 days</p>
-                  </div>
-                  <p className='text-sm font-semibold text-gray-900'>${chartTotal7d.toFixed(2)}</p>
-                </div>
-
-                <div className='flex items-end gap-1.5' style={{ height: '96px' }}>
-                  {dayTotals.map(function (day) {
-                    const barHeight = day.total > 0 ? Math.max((day.total / maxDayTotal) * 72, 4) : 0
-                    const isToday = day.dateStr === todayStr
-                    return (
-                      <div key={day.dateStr} className='flex-1 flex flex-col items-center gap-1.5'>
-                        <div className='w-full flex items-end justify-center' style={{ height: '72px' }}>
-                          {barHeight > 0 ? (
-                            <div
-                              className='w-full rounded-t-md transition-[height] duration-500'
-                              style={{
-                                height: `${barHeight}px`,
-                                backgroundColor: isToday ? '#0284c7' : '#7dd3fc',
-                              }}
-                              title={`$${day.total.toFixed(2)}`}
-                            />
-                          ) : (
-                            <div className='w-full rounded-t-sm bg-gray-100' style={{ height: '3px' }} />
-                          )}
-                        </div>
-                        <span className={`text-[10px] ${isToday ? 'text-sky-600 font-semibold' : 'text-gray-400'}`}>
-                          {day.label}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Paycheck allocation breakdown */}
-              <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-                <div className='flex items-baseline justify-between mb-1'>
-                  <p className='text-sm font-semibold text-gray-700'>Paycheck Allocation</p>
-                  {latestPaycheckAmt > 0 && (
-                    <span className='text-xs text-gray-400'>Based on ${latestPaycheckAmt.toFixed(2)}</span>
-                  )}
-                </div>
-                <p className='text-xs text-gray-400 mb-4'>How your last paycheck is distributed.</p>
-
-                {allocations.length === 0 ? (
-                  <p className='text-sm text-gray-400'>
-                    No allocations set up.{' '}
-                    <Link to='/paycheck' className='text-sky-600 hover:underline'>
-                      Add them on Paycheck →
-                    </Link>
-                  </p>
-                ) : (
-                  <>
-                    <div className='w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex mb-4'>
-                      {allocations.map(function (a, i) {
-                        return (
-                          <div
-                            key={a.id}
-                            className='h-full transition-all duration-500'
-                            style={{
-                              width: `${Math.min(a.percentage, 100)}%`,
-                              backgroundColor: PALETTE[i % PALETTE.length].hex,
-                            }}
-                          />
-                        )
-                      })}
-                    </div>
-
-                    <div className='space-y-2.5'>
-                      {allocations.map(function (a, i) {
-                        return (
-                          <div key={a.id} className='flex items-center gap-2'>
-                            <div
-                              className='w-2 h-2 rounded-full flex-shrink-0'
-                              style={{ backgroundColor: PALETTE[i % PALETTE.length].hex }}
-                            />
-                            <span className='text-sm text-gray-700 flex-1 truncate'>{a.label}</span>
-                            <span className='text-xs text-gray-400 flex-shrink-0 w-10 text-right'>
-                              {a.percentage}%
-                            </span>
-                            {latestPaycheckAmt > 0 && (
-                              <span className='text-sm font-semibold text-gray-900 w-16 text-right flex-shrink-0'>
-                                ${((a.percentage / 100) * latestPaycheckAmt).toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    <div className='mt-4 pt-3 border-t border-gray-100 flex justify-between items-center'>
-                      <span className='text-xs text-gray-400'>{totalAllocated.toFixed(0)}% allocated</span>
-                      <Link to='/paycheck' className='text-xs text-sky-600 hover:underline'>Edit allocations →</Link>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Recent activity */}
-              <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-                <div className='flex justify-between items-center mb-3'>
-                  <p className='text-sm font-semibold text-gray-700'>Recent Activity</p>
-                  <Link to='/history' className='text-xs text-sky-600 hover:underline'>See all</Link>
-                </div>
-                {expenses.length === 0 ? (
-                  <p className='text-sm text-gray-400'>No expenses logged this {periodName} yet.</p>
-                ) : (
-                  <div className='space-y-2.5'>
-                    {expenses.slice(0, 5).map(function (exp) {
-                      const cat = CATEGORIES.find(function (c) { return c.value === exp.category })
-                      return (
-                        <div
-                          key={exp.id}
-                          onClick={() => startEdit(exp)}
-                          className='flex items-center gap-3 cursor-pointer rounded-xl hover:bg-gray-100 -mx-2 px-2 py-1.5 transition-colors group'
-                        >
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cat?.color ?? 'bg-gray-300'}`} />
-                          <div className='flex-1 min-w-0'>
-                            <p className='text-sm text-gray-800 truncate group-hover:underline'>{exp.note || cat?.label}</p>
-                            <p className='text-xs text-gray-400'>
-                              {cat?.label} · {new Date(exp.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <p className='text-sm font-semibold text-gray-900 group-hover:text-sky-600 transition-colors'>${exp.amount.toFixed(2)}</p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
+              <SevenDayChart chartExpenses={chartExpenses} />
+              <PaycheckAllocation
+                allocations={allocations}
+                latestPaycheckAmt={latestPaycheckAmt}
+                totalAllocated={totalAllocated}
+              />
+              <RecentActivity
+                expenses={expenses}
+                periodName={periodName}
+                onExpenseClick={setEditingExpense}
+              />
             </div>
 
             {/* ── Right column ── */}
@@ -663,97 +406,9 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Edit expense modal */}
-      {editingExpense && (
-        <div
-          className='fixed inset-0 bg-black/40 flex items-center justify-center z-50'
-          onClick={() => setEditingExpense(null)}
-        >
-          <div
-            className='bg-white w-full max-w-md rounded-2xl p-6'
-            onClick={function (e) { e.stopPropagation() }}
-          >
-            <h2 className='text-lg font-bold text-gray-900 mb-4 text-center'>Edit expense</h2>
-            <form onSubmit={handleSaveEdit} className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Amount ($)</label>
-                <input
-                  type='number'
-                  step='0.01'
-                  min='0'
-                  required
-                  autoFocus
-                  value={editAmount}
-                  onChange={e => setEditAmount(e.target.value)}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Category</label>
-                <div className='grid grid-cols-3 gap-2'>
-                  {CATEGORIES.map(function (cat) {
-                    return (
-                      <button
-                        key={cat.value}
-                        type='button'
-                        onClick={() => setEditCategory(cat.value)}
-                        className={`py-1.5 rounded-lg text-xs font-medium border transition-colors active:scale-[0.97] ${
-                          editCategory === cat.value
-                            ? 'border-sky-400 bg-sky-50 text-sky-700'
-                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Note (optional)</label>
-                <input
-                  type='text'
-                  value={editNote}
-                  onChange={e => setEditNote(e.target.value)}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
-                  placeholder='e.g. Chipotle, Metro card...'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Date</label>
-                <input
-                  type='date'
-                  required
-                  value={editDate}
-                  max={localDateStr(new Date())}
-                  onChange={e => setEditDate(e.target.value)}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
-                />
-              </div>
-              <div className='flex gap-2 pt-1'>
-                <button
-                  type='button'
-                  onClick={() => setEditingExpense(null)}
-                  className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors active:scale-[0.97]'
-                >
-                  Cancel
-                </button>
-                <button
-                  type='submit'
-                  disabled={editExpenseMutation.isPending}
-                  className='flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-colors active:scale-[0.97]'
-                >
-                  {editExpenseMutation.isPending ? 'Saving...' : 'Save changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* FAB */}
       <button
-        onClick={() => setShowForm(true)}
+        onClick={function () { setShowForm(true) }}
         className='group fixed bottom-6 right-6 flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white rounded-full h-14 px-4 shadow-lg shadow-sky-200 overflow-hidden transition-[width,background-color] duration-300 ease-in-out w-14 hover:w-52 active:scale-[0.97]'
       >
         <span className='text-lg font-bold leading-none flex-shrink-0 flex items-center'>+</span>
@@ -762,94 +417,12 @@ export default function Dashboard() {
         </span>
       </button>
 
-      {/* Log expense modal */}
-      {showForm && (
-        <div
-          className='modal-backdrop fixed inset-0 bg-black/40 flex items-center justify-center z-50'
-          onClick={() => setShowForm(false)}
-        >
-          <div
-            className='modal-content bg-white w-full max-w-md rounded-2xl p-6'
-            onClick={function (e) { e.stopPropagation() }}
-          >
-            <h2 className='text-lg font-bold text-gray-900 mb-4 text-center'>Log an expense</h2>
-            <form onSubmit={handleAddExpense} className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Amount ($)</label>
-                <input
-                  type='number'
-                  step='0.01'
-                  min='0'
-                  required
-                  autoFocus
-                  value={amount}
-                  onChange={function (e) { setAmount(e.target.value) }}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
-                  placeholder='0.00'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Category</label>
-                <div className='grid grid-cols-3 gap-2'>
-                  {CATEGORIES.map(function (cat) {
-                    return (
-                      <button
-                        key={cat.value}
-                        type='button'
-                        onClick={() => setCategory(cat.value)}
-                        className={`py-1.5 rounded-lg text-xs font-medium border transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] ${
-                          category === cat.value
-                            ? 'border-sky-400 bg-sky-50 text-sky-700'
-                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Note (optional)</label>
-                <input
-                  type='text'
-                  value={note}
-                  onChange={function (e) { setNote(e.target.value) }}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
-                  placeholder='e.g. Chipotle, Metro card...'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Date</label>
-                <input
-                  type='date'
-                  required
-                  value={expenseDate}
-                  max={localDateStr(new Date())}
-                  onChange={function (e) { setExpenseDate(e.target.value) }}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
-                />
-              </div>
-              <div className='flex gap-2 pt-1'>
-                <button
-                  type='button'
-                  onClick={() => setShowForm(false)}
-                  className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium transition-[transform,background-color] duration-150 hover:bg-gray-50 active:scale-[0.97]'
-                >
-                  Cancel
-                </button>
-                <button
-                  type='submit'
-                  disabled={addExpenseMutation.isPending}
-                  className='flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-[transform,background-color] duration-150 active:scale-[0.97]'
-                >
-                  {addExpenseMutation.isPending ? 'Saving...' : 'Add expense'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ExpensePopup
+        key={editingExpense?.id ?? (showForm ? 'new' : 'closed')}
+        open={showForm || !!editingExpense}
+        onClose={closeModal}
+        expense={editingExpense}
+      />
     </div>
   )
 }
