@@ -373,10 +373,8 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Two-column main grid */}
           <div className='grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start'>
 
-            {/* ── Left column ── */}
             <div className='space-y-4'>
               <SevenDayChart chartExpenses={chartExpenses} />
               <PaycheckAllocation
@@ -391,7 +389,6 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* ── Right column ── */}
             <div className='space-y-4'>
               <Distribution
                 items={byCategory}
@@ -406,7 +403,6 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* FAB */}
       <button
         onClick={function () { setShowForm(true) }}
         className='group fixed bottom-6 right-6 flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white rounded-full h-14 px-4 shadow-lg shadow-sky-200 overflow-hidden transition-[width,background-color] duration-300 ease-in-out w-14 hover:w-52 active:scale-[0.97]'
