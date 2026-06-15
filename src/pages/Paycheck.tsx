@@ -56,15 +56,15 @@ export default function Paycheck() {
   const latestPaycheck = paychecks[0]?.amount ?? 0
 
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div className='min-h-screen bg-gray-50 dark:bg-[#06101f]'>
       <Sidebar />
 
       <main className='ml-56 px-8 py-8'>
         <div className='mx-auto max-w-5xl'>
 
           <div className='mb-6'>
-            <h1 className='text-xl font-bold text-gray-900'>Paycheck</h1>
-            <p className='text-sm text-gray-500'>Set your pay frequency, log income, and allocate your earnings.</p>
+            <h1 className='text-xl font-bold text-gray-900 dark:text-slate-100'>Paycheck</h1>
+            <p className='text-sm text-gray-500 dark:text-slate-400'>Set your pay frequency, log income, and allocate your earnings.</p>
           </div>
 
           <div className='grid grid-cols-2 gap-5 items-start'>

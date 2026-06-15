@@ -223,7 +223,7 @@ export default function Dashboard() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div className='min-h-screen bg-gray-50 dark:bg-[#06101f]'>
       <Sidebar />
 
       <main className='ml-56 px-6 py-6'>
@@ -232,17 +232,17 @@ export default function Dashboard() {
           {/* Header + period toggle */}
           <div className='flex items-end justify-between'>
             <div>
-              <h1 className='text-xl font-bold text-gray-900'>
+              <h1 className='text-xl font-bold text-gray-900 dark:text-slate-100'>
                 {userName ? `Hello, ${userName.split(' ')[0]} 👋` : 'Hello there 👋'}
               </h1>
-              <p className='text-sm text-gray-500'>Here's your overview for the {periodName}.</p>
+              <p className='text-sm text-gray-500 dark:text-slate-400'>Here's your overview for the {periodName}.</p>
             </div>
-            <div className='flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm'>
+            <div className='flex items-center gap-1 bg-white dark:bg-[#0e1f38] border border-gray-200 dark:border-[#1e3354] rounded-xl p-1 shadow-sm'>
               <button
                 type='button'
                 onClick={() => setPeriod('week')}
                 className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                  period === 'week' ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'
+                  period === 'week' ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:text-slate-400 dark:hover:bg-[#152238]'
                 }`}
               >
                 Week
@@ -251,7 +251,7 @@ export default function Dashboard() {
                 type='button'
                 onClick={() => setPeriod('month')}
                 className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                  period === 'month' ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'
+                  period === 'month' ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:text-slate-400 dark:hover:bg-[#152238]'
                 }`}
               >
                 Month
@@ -264,7 +264,7 @@ export default function Dashboard() {
             <button
               type='button'
               onClick={() => movePeriod(-1)}
-              className='h-7 w-7 rounded-lg border border-gray-200 text-base text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors flex items-center justify-center'
+              className='h-7 w-7 rounded-lg border border-gray-200 dark:border-[#1e3354] text-base text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-[#0e1f38] hover:text-gray-600 dark:hover:text-slate-300 transition-colors flex items-center justify-center'
               aria-label={`Previous ${periodName}`}
             >
               ‹
@@ -272,14 +272,14 @@ export default function Dashboard() {
             <button
               type='button'
               onClick={goToCurrentPeriod}
-              className='text-sm font-medium text-gray-600 hover:text-sky-600 transition-colors px-2 py-0.5 rounded-lg hover:bg-sky-50'
+              className='text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-colors px-2 py-0.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/20'
             >
               {periodLabel}
             </button>
             <button
               type='button'
               onClick={() => movePeriod(1)}
-              className='h-7 w-7 rounded-lg border border-gray-200 text-base text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors flex items-center justify-center'
+              className='h-7 w-7 rounded-lg border border-gray-200 dark:border-[#1e3354] text-base text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-[#0e1f38] hover:text-gray-600 dark:hover:text-slate-300 transition-colors flex items-center justify-center'
               aria-label={`Next ${periodName}`}
             >
               ›
@@ -288,70 +288,70 @@ export default function Dashboard() {
 
           {/* 4-up KPI row */}
           <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
-            <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-              <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Spent this {periodName}</p>
-              <p className='text-2xl font-bold text-gray-900'>${periodTotal.toFixed(2)}</p>
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Spent this {periodName}</p>
+              <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>${periodTotal.toFixed(2)}</p>
               {periodLimit > 0 ? (
                 <div className='mt-2.5'>
-                  <div className='w-full bg-gray-100 rounded-full h-1.5 overflow-hidden'>
+                  <div className='w-full bg-gray-100 dark:bg-[#0a1628] rounded-full h-1.5 overflow-hidden'>
                     <div
                       className={`h-1.5 rounded-full transition-[width,background-color] duration-500 ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <p className='text-xs text-gray-400 mt-1'>{Math.round(progress)}% of ${periodLimit.toFixed(0)} limit</p>
+                  <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>{Math.round(progress)}% of ${periodLimit.toFixed(0)} limit</p>
                 </div>
               ) : (
-                <p className='text-xs text-gray-400 mt-1'>No budget set</p>
+                <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>No budget set</p>
               )}
             </div>
 
-            <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-              <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Safe to Spend</p>
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Safe to Spend</p>
               {periodLimit > 0 ? (
                 <>
                   <p className={`text-2xl font-bold ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                     {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
                   </p>
-                  <p className={`text-xs mt-1 ${remaining < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                  <p className={`text-xs mt-1 ${remaining < 0 ? 'text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
                     {remaining < 0 ? 'over budget' : `remaining this ${periodName}`}
                   </p>
                 </>
               ) : (
                 <>
-                  <p className='text-2xl font-bold text-gray-300'>—</p>
+                  <p className='text-2xl font-bold text-gray-300 dark:text-slate-600'>—</p>
                   <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Log a paycheck →</Link>
                 </>
               )}
             </div>
 
-            <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-              <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Income This Month</p>
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Income This Month</p>
               {incomeThisMonth > 0 ? (
                 <>
-                  <p className='text-2xl font-bold text-gray-900'>${incomeThisMonth.toFixed(2)}</p>
-                  <p className='text-xs text-gray-400 mt-1'>Last paycheck: ${latestPaycheckAmt.toFixed(2)}</p>
+                  <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>${incomeThisMonth.toFixed(2)}</p>
+                  <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>Last paycheck: ${latestPaycheckAmt.toFixed(2)}</p>
                 </>
               ) : (
                 <>
-                  <p className='text-2xl font-bold text-gray-300'>—</p>
+                  <p className='text-2xl font-bold text-gray-300 dark:text-slate-600'>—</p>
                   <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Log a paycheck →</Link>
                 </>
               )}
             </div>
 
-            <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
-              <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Allocated</p>
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Allocated</p>
               {allocations.length > 0 ? (
                 <>
-                  <p className='text-2xl font-bold text-gray-900'>{totalAllocated.toFixed(0)}%</p>
-                  <p className='text-xs text-gray-400 mt-1'>
+                  <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>{totalAllocated.toFixed(0)}%</p>
+                  <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>
                     {allocations.length} goal{allocations.length !== 1 ? 's' : ''} set up
                   </p>
                 </>
               ) : (
                 <>
-                  <p className='text-2xl font-bold text-gray-300'>—</p>
+                  <p className='text-2xl font-bold text-gray-300 dark:text-slate-600'>—</p>
                   <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Add allocations →</Link>
                 </>
               )}
@@ -359,15 +359,15 @@ export default function Dashboard() {
           </div>
 
           {/* AllocateAI insight strip */}
-          <div className='bg-sky-50 border border-sky-100 rounded-2xl px-5 py-4 flex items-center justify-between gap-4'>
+          <div className='bg-sky-50 dark:bg-blue-950/40 border border-sky-100 dark:border-blue-900/50 rounded-2xl px-5 py-4 flex items-center justify-between gap-4'>
             <div className='flex items-center gap-3 min-w-0'>
               <span className='text-lg flex-shrink-0'>💡</span>
-              <p className='text-sm text-sky-800 font-medium leading-snug'>{getAiInsight()}</p>
+              <p className='text-sm text-sky-800 dark:text-sky-300 font-medium leading-snug'>{getAiInsight()}</p>
             </div>
             <button
               type='button'
               disabled
-              className='flex-shrink-0 text-xs font-semibold text-sky-400 border border-sky-200 bg-white rounded-lg px-3 py-1.5 cursor-not-allowed opacity-60 whitespace-nowrap'
+              className='flex-shrink-0 text-xs font-semibold text-sky-400 border border-sky-200 dark:border-sky-800 bg-white dark:bg-[#0e1f38] rounded-lg px-3 py-1.5 cursor-not-allowed opacity-60 whitespace-nowrap'
             >
               Ask AllocateAI
             </button>

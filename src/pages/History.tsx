@@ -127,14 +127,14 @@ export default function History() {
   })
 
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div className='min-h-screen bg-gray-50 dark:bg-[#06101f]'>
       <Sidebar />
 
       <main className='ml-56 flex justify-center px-8 py-8'>
         <div className='w-full max-w-2xl space-y-4'>
           <div>
-            <h1 className='text-xl font-bold text-gray-900'>History</h1>
-            <p className='text-sm text-gray-500'>Review and manage your logged expenses.</p>
+            <h1 className='text-xl font-bold text-gray-900 dark:text-slate-100'>History</h1>
+            <p className='text-sm text-gray-500 dark:text-slate-400'>Review and manage your logged expenses.</p>
           </div>
 
           {/* Category filter */}
@@ -144,7 +144,7 @@ export default function History() {
               className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
                 filter === 'all'
                   ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-sky-100'
+                  : 'bg-white dark:bg-[#0e1f38] text-gray-600 dark:text-slate-300 border-gray-200 dark:border-[#1e3354] hover:bg-sky-100 dark:hover:bg-sky-900/30'
               }`}
             >
               All
@@ -157,7 +157,7 @@ export default function History() {
                   className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap border transition-colors ${
                     filter === cat.value
                       ? 'bg-sky-600 text-white border-sky-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-sky-100'
+                      : 'bg-white dark:bg-[#0e1f38] text-gray-600 dark:text-slate-300 border-gray-200 dark:border-[#1e3354] hover:bg-sky-100 dark:hover:bg-sky-900/30'
                   }`}
                 >
                   {cat.label}
@@ -166,37 +166,37 @@ export default function History() {
             })}
           </div>
 
-          {isLoading && <p className='text-sm text-gray-400'>Loading...</p>}
+          {isLoading && <p className='text-sm text-gray-400 dark:text-slate-500'>Loading...</p>}
 
           {!isLoading && filtered.length === 0 && (
-            <p className='text-sm text-gray-400'>No expenses found.</p>
+            <p className='text-sm text-gray-400 dark:text-slate-500'>No expenses found.</p>
           )}
 
           {Object.entries(grouped).map(function ([date, exps]) {
             return (
               <div key={date}>
                 <div className='flex justify-between items-baseline mb-2'>
-                  <p className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>{date}</p>
-                  <p className='text-xs text-gray-400'>${exps.reduce(function (s, e) { return s + e.amount }, 0).toFixed(2)}</p>
+                  <p className='text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide'>{date}</p>
+                  <p className='text-xs text-gray-400 dark:text-slate-500'>${exps.reduce(function (s, e) { return s + e.amount }, 0).toFixed(2)}</p>
                 </div>
-                <div className='bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100'>
+                <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] shadow-sm divide-y divide-gray-100 dark:divide-[#1e3354]'>
                   {exps.map(function (exp) {
                     const cat = CATEGORIES.find(function (c) { return c.value === exp.category })
                     return (
                       <div
                         key={exp.id}
                         onClick={() => startEdit(exp)}
-                        className='flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors group'
+                        className='flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#152238] transition-colors group'
                       >
                         <div className={`w-2 h-2 rounded-full ${cat?.color ?? 'bg-gray-300'} flex-shrink-0`} />
                         <div className='flex-1 min-w-0'>
-                          <p className='text-sm text-gray-800 truncate group-hover:underline'>{exp.note || cat?.label}</p>
-                          <p className='text-xs text-gray-400'>{cat?.label}</p>
+                          <p className='text-sm text-gray-800 dark:text-slate-200 truncate group-hover:underline'>{exp.note || cat?.label}</p>
+                          <p className='text-xs text-gray-400 dark:text-slate-500'>{cat?.label}</p>
                         </div>
-                        <p className='text-sm font-semibold text-gray-900 group-hover:text-sky-600 transition-colors mr-1'>${exp.amount.toFixed(2)}</p>
+                        <p className='text-sm font-semibold text-gray-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors mr-1'>${exp.amount.toFixed(2)}</p>
                         <button
                           onClick={function (e) { e.stopPropagation(); deleteExpenseMutation.mutate(exp.id) }}
-                          className='text-gray-300 hover:text-red-400 text-xs transition-colors px-1'
+                          className='text-gray-300 dark:text-slate-600 hover:text-red-400 text-xs transition-colors px-1'
                           aria-label='Delete expense'
                         >
                           ✕
@@ -218,13 +218,13 @@ export default function History() {
           onClick={() => setEditingExpense(null)}
         >
           <div
-            className='bg-white w-full max-w-md rounded-2xl p-6'
+            className='bg-white dark:bg-[#0e1f38] w-full max-w-md rounded-2xl p-6'
             onClick={function (e) { e.stopPropagation() }}
           >
-            <h2 className='text-lg font-bold text-gray-900 mb-4 text-center'>Edit expense</h2>
+            <h2 className='text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 text-center'>Edit expense</h2>
             <form onSubmit={handleSaveEdit} className='space-y-4'>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Amount ($)</label>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Amount ($)</label>
                 <input
                   type='number'
                   step='0.01'
@@ -233,11 +233,11 @@ export default function History() {
                   autoFocus
                   value={editAmount}
                   onChange={e => setEditAmount(e.target.value)}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                  className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 />
               </div>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Category</label>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Category</label>
                 <div className='grid grid-cols-3 gap-2'>
                   {CATEGORIES.map(function (cat) {
                     return (
@@ -247,8 +247,8 @@ export default function History() {
                         onClick={() => setEditCategory(cat.value)}
                         className={`py-1.5 rounded-lg text-xs font-medium border transition-colors active:scale-[0.97] ${
                           editCategory === cat.value
-                            ? 'border-sky-400 bg-sky-50 text-sky-700'
-                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ? 'border-sky-400 bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
+                            : 'border-gray-200 dark:border-[#1e3354] text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-[#152238]'
                         }`}
                       >
                         {cat.label}
@@ -258,31 +258,31 @@ export default function History() {
                 </div>
               </div>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Note (optional)</label>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Note (optional)</label>
                 <input
                   type='text'
                   value={editNote}
                   onChange={e => setEditNote(e.target.value)}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                  className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
                   placeholder='e.g. Chipotle, Metro card...'
                 />
               </div>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Date</label>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Date</label>
                 <input
                   type='date'
                   required
                   value={editDate}
                   max={localDateStr(new Date())}
                   onChange={e => setEditDate(e.target.value)}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                  className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 />
               </div>
               <div className='flex gap-2 pt-1'>
                 <button
                   type='button'
                   onClick={() => setEditingExpense(null)}
-                  className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors active:scale-[0.97]'
+                  className='flex-1 border border-gray-300 dark:border-[#1e3354] text-gray-600 dark:text-slate-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#152238] transition-colors active:scale-[0.97]'
                 >
                   Cancel
                 </button>
