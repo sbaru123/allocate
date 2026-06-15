@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode for Tailwind v4 */
+@variant dark (&:is(.dark *));
+
 /* Custom easing curves — built-in CSS easings are too weak */
 :root {
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
