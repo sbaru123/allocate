@@ -105,10 +105,10 @@ export default function LogPaycheckCard({ paychecks }: Props) {
 
   return (
     <>
-      <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+      <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
         <div className='flex justify-between items-baseline mb-3'>
-          <h2 className='text-sm font-semibold text-gray-800'>Log a paycheck</h2>
-          <span className='text-xs text-gray-400'>Total logged: ${totalIncome.toFixed(2)}</span>
+          <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Log a paycheck</h2>
+          <span className='text-xs text-gray-400 dark:text-slate-500'>Total logged: ${totalIncome.toFixed(2)}</span>
         </div>
         <form onSubmit={handleAdd} className='space-y-3'>
           <div className='flex gap-2'>
@@ -116,7 +116,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
               type='text'
               value={note}
               onChange={function (e) { setNote(e.target.value) }}
-              className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+              className='flex-1 border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
               placeholder='Note (e.g. Week 1)'
             />
             <input
@@ -126,7 +126,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
               required
               value={amount}
               onChange={function (e) { setAmount(e.target.value) }}
-              className='flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+              className='flex-1 border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
               placeholder='Amount ($)'
             />
           </div>
@@ -136,7 +136,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
             value={date}
             max={maxDateStr()}
             onChange={function (e) { setDate(e.target.value) }}
-            className='w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+            className='w-full border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
           />
           <button
             type='submit'
@@ -148,24 +148,24 @@ export default function LogPaycheckCard({ paychecks }: Props) {
         </form>
 
         {paychecks.length > 0 && (
-          <div className='mt-4 divide-y divide-gray-100'>
+          <div className='mt-4 divide-y divide-gray-100 dark:divide-[#1e3354]'>
             {paychecks.map(function (p) {
               return (
                 <div
                   key={p.id}
                   onClick={function () { startEdit(p) }}
-                  className='flex items-center py-2 gap-3 cursor-pointer rounded-lg hover:bg-gray-100 -mx-2 px-2 transition-colors group'
+                  className='flex items-center py-2 gap-3 cursor-pointer rounded-lg hover:bg-gray-100 dark:hover:bg-[#152238] -mx-2 px-2 transition-colors group'
                 >
                   <div className='flex-1 min-w-0'>
-                    <p className='text-sm text-gray-800 group-hover:underline'>${p.amount.toFixed(2)}</p>
-                    <p className='text-xs text-gray-400'>
+                    <p className='text-sm text-gray-800 dark:text-slate-200 group-hover:underline'>${p.amount.toFixed(2)}</p>
+                    <p className='text-xs text-gray-400 dark:text-slate-500'>
                       {p.note && `${p.note} · `}
                       {new Date(p.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <button
                     onClick={function (e) { e.stopPropagation(); deletePaycheckMutation.mutate(p.id) }}
-                    className='text-gray-300 hover:text-red-400 text-xs transition-colors'
+                    className='text-gray-300 dark:text-slate-600 hover:text-red-400 text-xs transition-colors'
                   >
                     ✕
                   </button>
@@ -179,17 +179,17 @@ export default function LogPaycheckCard({ paychecks }: Props) {
       {/* Edit modal */}
       {editingPaycheck && (
         <div
-          className='fixed inset-0 bg-black/40 flex items-center justify-center z-50'
+          className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'
           onClick={function () { setEditingPaycheck(null) }}
         >
           <div
-            className='bg-white w-full max-w-md rounded-2xl p-6'
+            className='bg-white dark:bg-[#0e1f38] w-full max-w-md rounded-2xl p-6'
             onClick={function (e) { e.stopPropagation() }}
           >
-            <h2 className='text-lg font-bold text-gray-900 mb-4 text-center'>Edit paycheck</h2>
+            <h2 className='text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 text-center'>Edit paycheck</h2>
             <form onSubmit={handleSaveEdit} className='space-y-4'>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Amount ($)</label>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Amount ($)</label>
                 <input
                   type='number'
                   step='0.01'
@@ -198,35 +198,35 @@ export default function LogPaycheckCard({ paychecks }: Props) {
                   autoFocus
                   value={editAmount}
                   onChange={function (e) { setEditAmount(e.target.value) }}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                  className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 />
               </div>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Note (optional)</label>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Note (optional)</label>
                 <input
                   type='text'
                   value={editNote}
                   onChange={function (e) { setEditNote(e.target.value) }}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                  className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
                   placeholder='e.g. Week 1'
                 />
               </div>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Date received</label>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Date received</label>
                 <input
                   type='date'
                   required
                   value={editDate}
                   max={maxDateStr()}
                   onChange={function (e) { setEditDate(e.target.value) }}
-                  className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                  className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 />
               </div>
               <div className='flex gap-2 pt-1'>
                 <button
                   type='button'
                   onClick={function () { setEditingPaycheck(null) }}
-                  className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors'
+                  className='flex-1 border border-gray-300 dark:border-[#1e3354] text-gray-600 dark:text-slate-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#152238] transition-colors'
                 >
                   Cancel
                 </button>

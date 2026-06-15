@@ -44,12 +44,12 @@ export default function PayFrequencyCard({ payFrequency, latestPaycheck, allocat
   })
 
   return (
-    <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
       <div className='flex items-baseline justify-between mb-1'>
-        <h2 className='text-sm font-semibold text-gray-800'>Pay frequency</h2>
+        <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Pay frequency</h2>
         {freqSaved && <span className='text-xs text-emerald-500 font-medium'>Saved ✓</span>}
       </div>
-      <p className='text-xs text-gray-400 mb-4'>How often do you receive a paycheck?</p>
+      <p className='text-xs text-gray-400 dark:text-slate-500 mb-4'>How often do you receive a paycheck?</p>
       <div className='flex gap-2'>
         {(['weekly', 'biweekly', 'monthly'] as const).map(function (freq) {
           return (
@@ -60,7 +60,7 @@ export default function PayFrequencyCard({ payFrequency, latestPaycheck, allocat
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 payFrequency === freq
                   ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  : 'border-gray-200 dark:border-[#1e3354] text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-[#152238]'
               }`}
             >
               {FREQ_LABELS[freq]}
@@ -69,9 +69,9 @@ export default function PayFrequencyCard({ payFrequency, latestPaycheck, allocat
         })}
       </div>
       {weeklySpendingBudget > 0 && (
-        <p className='text-xs text-gray-400 mt-3'>
+        <p className='text-xs text-gray-400 dark:text-slate-500 mt-3'>
           Est. weekly spending budget:{' '}
-          <span className='font-semibold text-gray-700'>${weeklySpendingBudget.toFixed(2)}</span>
+          <span className='font-semibold text-gray-700 dark:text-slate-300'>${weeklySpendingBudget.toFixed(2)}</span>
           {' '}— ${latestPaycheck.toFixed(2)} paycheck with {unallocated.toFixed(0)}% unallocated.
         </p>
       )}

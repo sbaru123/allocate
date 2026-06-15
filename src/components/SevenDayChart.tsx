@@ -32,13 +32,13 @@ export default function SevenDayChart({ chartExpenses }: Props) {
   const chartTotal7d = chartExpenses.reduce(function (s, e) { return s + e.amount }, 0)
 
   return (
-    <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
       <div className='flex items-center justify-between mb-4'>
         <div>
-          <p className='text-sm font-semibold text-gray-700'>7-Day Spending</p>
-          <p className='text-xs text-gray-400'>Rolling last 7 days</p>
+          <p className='text-sm font-semibold text-gray-700 dark:text-slate-200'>7-Day Spending</p>
+          <p className='text-xs text-gray-400 dark:text-slate-500'>Rolling last 7 days</p>
         </div>
-        <p className='text-sm font-semibold text-gray-900'>${chartTotal7d.toFixed(2)}</p>
+        <p className='text-sm font-semibold text-gray-900 dark:text-slate-100'>${chartTotal7d.toFixed(2)}</p>
       </div>
 
       <div className='flex items-end gap-1.5' style={{ height: '96px' }}>
@@ -54,7 +54,7 @@ export default function SevenDayChart({ chartExpenses }: Props) {
             >
               <div className='w-full flex flex-col items-center justify-end' style={{ height: '72px' }}>
                 {isHovered && (
-                  <p className='text-[10px] font-semibold text-sky-700 mb-1 leading-none'>
+                  <p className='text-[10px] font-semibold text-sky-700 dark:text-sky-400 mb-1 leading-none'>
                     ${day.total.toFixed(2)}
                   </p>
                 )}
@@ -69,11 +69,11 @@ export default function SevenDayChart({ chartExpenses }: Props) {
                 ) : (
                   <div
                     className='w-full rounded-t-sm transition-colors duration-200'
-                    style={{ height: '3px', backgroundColor: '#e5e7eb' }}
+                    style={{ height: '3px', backgroundColor: '#1e3354' }}
                   />
                 )}
               </div>
-              <span className={`text-[10px] transition-colors duration-200 ${isHovered ? 'text-sky-600 font-semibold' : 'text-gray-400'}`}>
+              <span className={`text-[10px] transition-colors duration-200 ${isHovered ? 'text-sky-600 dark:text-sky-400 font-semibold' : 'text-gray-400 dark:text-slate-500'}`}>
                 {day.label}
               </span>
             </div>

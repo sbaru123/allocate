@@ -85,19 +85,19 @@ export default function ExpenseModal({ open, onClose, expense }: Props) {
 
   return (
     <div
-      className='fixed inset-0 bg-black/40 flex items-center justify-center z-50'
+      className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'
       onClick={onClose}
     >
       <div
-        className='bg-white w-full max-w-md rounded-2xl p-6'
+        className='bg-white dark:bg-[#0e1f38] w-full max-w-md rounded-2xl p-6'
         onClick={function (e) { e.stopPropagation() }}
       >
-        <h2 className='text-lg font-bold text-gray-900 mb-4 text-center'>
+        <h2 className='text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 text-center'>
           {isEdit ? 'Edit expense' : 'Log an expense'}
         </h2>
         <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>Amount ($)</label>
+            <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Amount ($)</label>
             <input
               type='number'
               step='0.01'
@@ -106,12 +106,12 @@ export default function ExpenseModal({ open, onClose, expense }: Props) {
               autoFocus
               value={amount}
               onChange={function (e) { setAmount(e.target.value) }}
-              className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+              className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
               placeholder='0.00'
             />
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>Category</label>
+            <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Category</label>
             <div className='grid grid-cols-3 gap-2'>
               {CATEGORIES.map(function (cat) {
                 return (
@@ -121,8 +121,8 @@ export default function ExpenseModal({ open, onClose, expense }: Props) {
                     onClick={function () { setCategory(cat.value) }}
                     className={`py-1.5 rounded-lg text-xs font-medium border transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] ${
                       category === cat.value
-                        ? 'border-sky-400 bg-sky-50 text-sky-700'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'border-sky-400 bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
+                        : 'border-gray-200 dark:border-[#1e3354] text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-[#152238]'
                     }`}
                   >
                     {cat.label}
@@ -132,31 +132,31 @@ export default function ExpenseModal({ open, onClose, expense }: Props) {
             </div>
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>Note (optional)</label>
+            <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Note (optional)</label>
             <input
               type='text'
               value={note}
               onChange={function (e) { setNote(e.target.value) }}
-              className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+              className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
               placeholder='e.g. Chipotle, Metro card...'
             />
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>Date</label>
+            <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Date</label>
             <input
               type='date'
               required
               value={date}
               max={localDateStr(new Date())}
               onChange={function (e) { setDate(e.target.value) }}
-              className='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+              className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
             />
           </div>
           <div className='flex gap-2 pt-1'>
             <button
               type='button'
               onClick={onClose}
-              className='flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium transition-[transform,background-color] duration-150 hover:bg-gray-50 active:scale-[0.97]'
+              className='flex-1 border border-gray-300 dark:border-[#1e3354] text-gray-600 dark:text-slate-300 py-2 rounded-lg text-sm font-medium transition-[transform,background-color] duration-150 hover:bg-gray-50 dark:hover:bg-[#152238] active:scale-[0.97]'
             >
               Cancel
             </button>

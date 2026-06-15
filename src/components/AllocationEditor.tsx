@@ -97,24 +97,24 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
   }
 
   return (
-    <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
       <div className='flex justify-between items-baseline mb-1'>
-        <h2 className='text-sm font-semibold text-gray-800'>Paycheck allocation</h2>
+        <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Paycheck allocation</h2>
         {latestPaycheck > 0 && (
-          <span className='text-xs text-gray-400'>Based on last paycheck: ${latestPaycheck.toFixed(2)}</span>
+          <span className='text-xs text-gray-400 dark:text-slate-500'>Based on last paycheck: ${latestPaycheck.toFixed(2)}</span>
         )}
       </div>
-      <p className='text-xs text-gray-400 mb-4'>Distribute your paycheck into goals. Runs every paycheck.</p>
+      <p className='text-xs text-gray-400 dark:text-slate-500 mb-4'>Distribute your paycheck into goals. Runs every paycheck.</p>
 
       {/* Segmented bar */}
       <div className='mb-4'>
         <div className='flex justify-between text-xs mb-1'>
-          <span className='text-gray-500'>{totalAllocated.toFixed(0)}% allocated</span>
-          <span className={unallocated < 0 ? 'text-red-500' : 'text-gray-400'}>
+          <span className='text-gray-500 dark:text-slate-400'>{totalAllocated.toFixed(0)}% allocated</span>
+          <span className={unallocated < 0 ? 'text-red-500' : 'text-gray-400 dark:text-slate-500'}>
             {unallocated.toFixed(0)}% unallocated
           </span>
         </div>
-        <div className='w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex'>
+        <div className='w-full bg-gray-100 dark:bg-[#0a1628] rounded-full h-2.5 overflow-hidden flex'>
           {allocations.map(function (a, i) {
             return (
               <div
@@ -133,7 +133,7 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
       {/* Allocation rows */}
       <div className='space-y-2 mb-4'>
         {allocations.length === 0 && (
-          <p className='text-sm text-gray-400'>No allocations yet. Add one below.</p>
+          <p className='text-sm text-gray-400 dark:text-slate-500'>No allocations yet. Add one below.</p>
         )}
         {allocations.map(function (a, i) {
           return (
@@ -143,7 +143,7 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
                   <input
                     value={editLabel}
                     onChange={function (e) { setEditLabel(e.target.value) }}
-                    className='flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400'
+                    className='flex-1 border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
                     placeholder='Label'
                   />
                   <div className='relative w-24 flex-shrink-0'>
@@ -154,20 +154,20 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
                       step='1'
                       value={editPct}
                       onChange={function (e) { setEditPct(e.target.value) }}
-                      className='w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 pr-6'
+                      className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 pr-6'
                     />
-                    <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400'>%</span>
+                    <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500'>%</span>
                   </div>
                   <button
                     onClick={function () { handleSaveEdit(a.id) }}
                     disabled={updateAllocationMutation.isPending}
-                    className='text-sky-600 hover:text-sky-800 text-xs font-semibold transition-colors disabled:opacity-50'
+                    className='text-sky-600 hover:text-sky-800 dark:hover:text-sky-400 text-xs font-semibold transition-colors disabled:opacity-50'
                   >
                     Save
                   </button>
                   <button
                     onClick={function () { setEditingId(null) }}
-                    className='text-gray-400 hover:text-gray-600 text-xs transition-colors'
+                    className='text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xs transition-colors'
                   >
                     Cancel
                   </button>
@@ -179,23 +179,23 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
                       className='w-2 h-2 rounded-full flex-shrink-0'
                       style={{ backgroundColor: PALETTE[i % PALETTE.length].hex }}
                     />
-                    <span className='text-sm text-gray-800 truncate'>{a.label}</span>
+                    <span className='text-sm text-gray-800 dark:text-slate-200 truncate'>{a.label}</span>
                   </div>
-                  <span className='text-sm font-semibold text-gray-700 w-10 text-right flex-shrink-0'>{a.percentage}%</span>
+                  <span className='text-sm font-semibold text-gray-700 dark:text-slate-300 w-10 text-right flex-shrink-0'>{a.percentage}%</span>
                   {latestPaycheck > 0 && (
-                    <span className='text-xs text-gray-400 w-16 text-right flex-shrink-0'>
+                    <span className='text-xs text-gray-400 dark:text-slate-500 w-16 text-right flex-shrink-0'>
                       ${((a.percentage / 100) * latestPaycheck).toFixed(2)}
                     </span>
                   )}
                   <button
                     onClick={function () { startEdit(a) }}
-                    className='text-gray-300 hover:text-sky-500 text-xs transition-colors ml-1'
+                    className='text-gray-300 dark:text-slate-600 hover:text-sky-500 dark:hover:text-sky-400 text-xs transition-colors ml-1'
                   >
                     ✎
                   </button>
                   <button
                     onClick={function () { deleteAllocationMutation.mutate(a.id) }}
-                    className='text-gray-300 hover:text-red-400 text-xs transition-colors'
+                    className='text-gray-300 dark:text-slate-600 hover:text-red-400 text-xs transition-colors'
                   >
                     ✕
                   </button>
@@ -207,13 +207,13 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
       </div>
 
       {/* Add allocation form */}
-      <form onSubmit={handleAdd} className='flex gap-2 items-center border-t border-gray-100 pt-4'>
+      <form onSubmit={handleAdd} className='flex gap-2 items-center border-t border-gray-100 dark:border-[#1e3354] pt-4'>
         <input
           type='text'
           required
           value={newLabel}
           onChange={function (e) { setNewLabel(e.target.value) }}
-          className='flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400'
+          className='flex-1 border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
           placeholder='e.g. Roth IRA'
         />
         <div className='relative w-20 flex-shrink-0'>
@@ -225,10 +225,10 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
             required
             value={newPct}
             onChange={function (e) { setNewPct(e.target.value) }}
-            className='w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 pr-6'
+            className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 pr-6 placeholder:text-gray-400 dark:placeholder:text-slate-600'
             placeholder='%'
           />
-          <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400'>%</span>
+          <span className='absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500'>%</span>
         </div>
         <button
           type='submit'

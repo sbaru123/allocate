@@ -40,17 +40,17 @@ export default function ProjectedFundsCard({ allocations, paychecks, payFrequenc
   const perYearTotal = perCheckTotal * checksPerYear
 
   return (
-    <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
       <div className='flex items-baseline justify-between mb-1'>
-        <h2 className='text-sm font-semibold text-gray-800'>Projected Annual Allocated Funds</h2>
-        <span className='text-sm text-emerald-600 font-medium'>↗ Invested</span>
+        <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Projected Annual Allocated Funds</h2>
+        <span className='text-sm text-emerald-600 dark:text-emerald-400 font-medium'>↗ Invested</span>
       </div>
-      <p className='text-xs text-gray-400 mb-4'>
+      <p className='text-xs text-gray-400 dark:text-slate-500 mb-4'>
         Avg paycheck this year (${avgPaycheck.toLocaleString(undefined, { maximumFractionDigits: 0 })}) × {checksPerYear} checks.
       </p>
 
       {allocations.length === 0 || avgPaycheck === 0 ? (
-        <p className='text-sm text-gray-400'>
+        <p className='text-sm text-gray-400 dark:text-slate-500'>
           {allocations.length === 0
             ? 'Add allocations above to see your projection.'
             : 'Log a paycheck this year to see your projection.'}
@@ -59,20 +59,20 @@ export default function ProjectedFundsCard({ allocations, paychecks, payFrequenc
         <>
           <div className='flex gap-8 mb-5'>
             <div>
-              <p className='text-xs text-gray-400 uppercase tracking-wide mb-0.5'>Per year</p>
-              <p className='text-3xl font-bold text-gray-900'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-0.5'>Per year</p>
+              <p className='text-3xl font-bold text-gray-900 dark:text-slate-100'>
                 ${perYearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
             <div>
-              <p className='text-xs text-gray-400 uppercase tracking-wide mb-0.5'>Per check</p>
-              <p className='text-3xl font-bold text-gray-900'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-0.5'>Per check</p>
+              <p className='text-3xl font-bold text-gray-900 dark:text-slate-100'>
                 ${perCheckTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
             </div>
           </div>
 
-          <div className='space-y-2.5 border-t border-gray-100 pt-4'>
+          <div className='space-y-2.5 border-t border-gray-100 dark:border-[#1e3354] pt-4'>
             {allocations.map(function (a, i) {
               const goalPerCheck = avgPaycheck * (a.percentage / 100)
               const goalPerYear = goalPerCheck * checksPerYear
@@ -82,11 +82,11 @@ export default function ProjectedFundsCard({ allocations, paychecks, payFrequenc
                     className='w-2 h-2 rounded-full flex-shrink-0'
                     style={{ backgroundColor: PALETTE[i % PALETTE.length].hex }}
                   />
-                  <span className='text-sm text-gray-700 flex-1 truncate'>{a.label}</span>
-                  <span className='text-sm font-semibold text-gray-900'>
+                  <span className='text-sm text-gray-700 dark:text-slate-300 flex-1 truncate'>{a.label}</span>
+                  <span className='text-sm font-semibold text-gray-900 dark:text-slate-100'>
                     ${goalPerYear.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
-                  <span className='text-xs text-gray-400'>/yr</span>
+                  <span className='text-xs text-gray-400 dark:text-slate-500'>/yr</span>
                 </div>
               )
             })}

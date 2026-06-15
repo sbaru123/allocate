@@ -20,25 +20,25 @@ type Props = {
 
 export default function PaycheckAllocation({ allocations, latestPaycheckAmt, totalAllocated }: Props) {
   return (
-    <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
       <div className='flex items-baseline justify-between mb-1'>
-        <p className='text-sm font-semibold text-gray-700'>Paycheck Allocation</p>
+        <p className='text-sm font-semibold text-gray-700 dark:text-slate-200'>Paycheck Allocation</p>
         {latestPaycheckAmt > 0 && (
-          <span className='text-xs text-gray-400'>Based on ${latestPaycheckAmt.toFixed(2)}</span>
+          <span className='text-xs text-gray-400 dark:text-slate-500'>Based on ${latestPaycheckAmt.toFixed(2)}</span>
         )}
       </div>
-      <p className='text-xs text-gray-400 mb-4'>How your last paycheck is distributed.</p>
+      <p className='text-xs text-gray-400 dark:text-slate-500 mb-4'>How your last paycheck is distributed.</p>
 
       {allocations.length === 0 ? (
-        <p className='text-sm text-gray-400'>
+        <p className='text-sm text-gray-400 dark:text-slate-500'>
           No allocations set up.{' '}
-          <Link to='/paycheck' className='text-sky-600 hover:underline'>
+          <Link to='/paycheck' className='text-sky-600 dark:text-sky-400 hover:underline'>
             Add them on Paycheck →
           </Link>
         </p>
       ) : (
         <>
-          <div className='w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex mb-4'>
+          <div className='w-full bg-gray-100 dark:bg-[#0a1628] rounded-full h-2.5 overflow-hidden flex mb-4'>
             {allocations.map(function (a, i) {
               return (
                 <div
@@ -61,12 +61,12 @@ export default function PaycheckAllocation({ allocations, latestPaycheckAmt, tot
                     className='w-2 h-2 rounded-full flex-shrink-0'
                     style={{ backgroundColor: PALETTE[i % PALETTE.length].hex }}
                   />
-                  <span className='text-sm text-gray-700 flex-1 truncate'>{a.label}</span>
-                  <span className='text-xs text-gray-400 flex-shrink-0 w-10 text-right'>
+                  <span className='text-sm text-gray-700 dark:text-slate-300 flex-1 truncate'>{a.label}</span>
+                  <span className='text-xs text-gray-400 dark:text-slate-500 flex-shrink-0 w-10 text-right'>
                     {a.percentage}%
                   </span>
                   {latestPaycheckAmt > 0 && (
-                    <span className='text-sm font-semibold text-gray-900 w-16 text-right flex-shrink-0'>
+                    <span className='text-sm font-semibold text-gray-900 dark:text-slate-100 w-16 text-right flex-shrink-0'>
                       ${((a.percentage / 100) * latestPaycheckAmt).toFixed(2)}
                     </span>
                   )}
@@ -75,9 +75,9 @@ export default function PaycheckAllocation({ allocations, latestPaycheckAmt, tot
             })}
           </div>
 
-          <div className='mt-4 pt-3 border-t border-gray-100 flex justify-between items-center'>
-            <span className='text-xs text-gray-400'>{totalAllocated.toFixed(0)}% allocated</span>
-            <Link to='/paycheck' className='text-xs text-sky-600 hover:underline'>Edit allocations →</Link>
+          <div className='mt-4 pt-3 border-t border-gray-100 dark:border-[#1e3354] flex justify-between items-center'>
+            <span className='text-xs text-gray-400 dark:text-slate-500'>{totalAllocated.toFixed(0)}% allocated</span>
+            <Link to='/paycheck' className='text-xs text-sky-600 dark:text-sky-400 hover:underline'>Edit allocations →</Link>
           </div>
         </>
       )}

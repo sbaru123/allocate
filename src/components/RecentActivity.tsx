@@ -17,14 +17,14 @@ type Props = {
 
 export default function RecentActivity({ expenses, periodName, onExpenseClick }: Props) {
   return (
-    <div className='bg-white rounded-2xl border border-gray-200 p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
       <div className='flex justify-between items-center mb-3'>
-        <p className='text-sm font-semibold text-gray-700'>Recent Activity</p>
-        <Link to='/history' className='text-xs text-sky-600 hover:underline'>See all</Link>
+        <p className='text-sm font-semibold text-gray-700 dark:text-slate-200'>Recent Activity</p>
+        <Link to='/history' className='text-xs text-sky-600 dark:text-sky-400 hover:underline'>See all</Link>
       </div>
 
       {expenses.length === 0 ? (
-        <p className='text-sm text-gray-400'>No expenses logged this {periodName} yet.</p>
+        <p className='text-sm text-gray-400 dark:text-slate-500'>No expenses logged this {periodName} yet.</p>
       ) : (
         <div className='space-y-2.5'>
           {expenses.slice(0, 5).map(function (exp) {
@@ -33,16 +33,16 @@ export default function RecentActivity({ expenses, periodName, onExpenseClick }:
               <div
                 key={exp.id}
                 onClick={() => onExpenseClick(exp)}
-                className='flex items-center gap-3 cursor-pointer rounded-xl hover:bg-gray-100 -mx-2 px-2 py-1.5 transition-colors group'
+                className='flex items-center gap-3 cursor-pointer rounded-xl hover:bg-gray-100 dark:hover:bg-[#152238] -mx-2 px-2 py-1.5 transition-colors group'
               >
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cat?.color ?? 'bg-gray-300'}`} />
                 <div className='flex-1 min-w-0'>
-                  <p className='text-sm text-gray-800 truncate group-hover:underline'>{exp.note || cat?.label}</p>
-                  <p className='text-xs text-gray-400'>
+                  <p className='text-sm text-gray-800 dark:text-slate-200 truncate group-hover:underline'>{exp.note || cat?.label}</p>
+                  <p className='text-xs text-gray-400 dark:text-slate-500'>
                     {cat?.label} · {new Date(exp.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <p className='text-sm font-semibold text-gray-900 group-hover:text-sky-600 transition-colors'>${exp.amount.toFixed(2)}</p>
+                <p className='text-sm font-semibold text-gray-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors'>${exp.amount.toFixed(2)}</p>
               </div>
             )
           })}
