@@ -72,7 +72,7 @@ export default function Distribution({ items, periodName, total, budgetLimit, re
               cy='112'
               r={radius}
               fill='none'
-              stroke='#1e3354'
+              stroke='var(--chart-track)'
               strokeWidth={strokeWidth}
             />
             {segments.map(function (item) {
