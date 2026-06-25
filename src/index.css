@@ -57,3 +57,111 @@
 .expense-item {
   animation: fade-up 250ms var(--ease-out) both;
 }
+
+/* ── Landing page animations ─────────────────────────────────── */
+
+/* Background blobs */
+@keyframes blob-drift-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33%       { transform: translate(32px, -22px) scale(1.06); }
+  66%       { transform: translate(-18px, 16px) scale(0.96); }
+}
+@keyframes blob-drift-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33%       { transform: translate(-28px, 22px) scale(1.08); }
+  66%       { transform: translate(22px, -14px) scale(0.94); }
+}
+@keyframes blob-drift-3 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  50%       { transform: translate(16px, 26px) scale(1.07); }
+}
+
+.blob-1 { animation: blob-drift-1 18s ease-in-out infinite; }
+.blob-2 { animation: blob-drift-2 22s ease-in-out infinite; }
+.blob-3 { animation: blob-drift-3 16s ease-in-out infinite; }
+
+/* Floating product cards bobbing */
+@keyframes card-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+.card-bob { animation: card-bob 7s ease-in-out infinite; }
+
+/* Hero content entrance */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.reveal-up {
+  opacity: 0;
+  animation: reveal-up 0.6s var(--ease-out) forwards;
+}
+
+/* Card corner reveals */
+@keyframes card-reveal-tl {
+  from { opacity: 0; transform: translate(-14px, -14px); }
+  to   { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes card-reveal-tr {
+  from { opacity: 0; transform: translate(14px, -14px); }
+  to   { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes card-reveal-bl {
+  from { opacity: 0; transform: translate(-14px, 14px); }
+  to   { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes card-reveal-br {
+  from { opacity: 0; transform: translate(14px, 14px); }
+  to   { opacity: 1; transform: translate(0, 0); }
+}
+
+.card-reveal-tl { opacity: 0; animation: card-reveal-tl 0.7s var(--ease-out) forwards; }
+.card-reveal-tr { opacity: 0; animation: card-reveal-tr 0.7s var(--ease-out) forwards; }
+.card-reveal-bl { opacity: 0; animation: card-reveal-bl 0.7s var(--ease-out) forwards; }
+.card-reveal-br { opacity: 0; animation: card-reveal-br 0.7s var(--ease-out) forwards; }
+
+/* Sparkline draw-on */
+@keyframes draw-sparkline {
+  from { stroke-dashoffset: 320; }
+  to   { stroke-dashoffset: 0; }
+}
+.sparkline-path {
+  stroke-dasharray: 320;
+  stroke-dashoffset: 320;
+  animation: draw-sparkline 1.4s var(--ease-out) 0.9s forwards;
+}
+.sparkline-dot {
+  opacity: 0;
+  animation: reveal-up 0.3s ease-out 2.1s forwards;
+}
+
+/* Allocation bar shimmer sweep */
+@keyframes shimmer-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(250%); }
+}
+.bar-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%);
+  animation: shimmer-sweep 1.2s var(--ease-out) 0.9s both;
+}
+
+/* Reduced motion — settle everything to its visible end-state */
+@media (prefers-reduced-motion: reduce) {
+  .blob-1, .blob-2, .blob-3 { animation: none; }
+  .card-bob { animation: none; }
+  .bar-shimmer { animation: none; }
+  .sparkline-path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .sparkline-dot { animation: none; opacity: 1; }
+  .reveal-up,
+  .card-reveal-tl, .card-reveal-tr,
+  .card-reveal-bl, .card-reveal-br {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
