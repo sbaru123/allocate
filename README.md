@@ -1,26 +1,61 @@
 # Allocate
 
-A personal finance OS built for college students and interns. Not just a tracker — a tool for intentional money management.
+A personal finance OS built for college students and interns. Not just a tracker — a system for intentional money management that splits every paycheck into the goals that build real wealth.
 
 ## What It Does
 
-Terp Budget lets you split every paycheck across custom buckets (Checking, Savings, Roth IRA, Emergency Fund, etc.) based on rules you define. Set goals, track spending by category, and get AI-powered guidance on your financial decisions.
+Allocate takes your income and automatically distributes it across custom buckets (Investing, Savings, Lifestyle, Giving, etc.) based on percentage rules you define. Track spending by category, monitor projected fund growth, and see exactly where every dollar went.
 
 ## Features
 
-- **Paycheck splitting** — define percentage or fixed allocations per bucket, auto-distribute on every paycheck
-- **Bucket system** — organize money across checking, savings, investment, and custom accounts
-- **Expense tracking** — log daily expenses by category against your weekly budget
-- **Goal planning** — set a target amount and date, track required contributions per paycheck
-- **AI assistant** — ask questions about your finances, get proactive spending alerts, and learn financial concepts *(coming soon)*
+- **Paycheck splitting** — define percentage-based allocation rules per bucket, auto-distribute on every paycheck entry
+- **Bucket system** — organize money across investing, savings, lifestyle, and any custom category
+- **Expense tracking** — log daily expenses by category against your weekly budget with a breakdown chart
+- **Allocation editor** — adjust your split rules at any time and see the impact immediately
+- **Projected funds** — visualize how your balances grow over time based on current allocation pace
+- **Pay frequency tracking** — set weekly, bi-weekly, or monthly pay cadence
+- **Dark mode** — full dark/light theme with system preference support
+- **AI assistant** — ask questions about your finances and get proactive guidance *(coming soon)*
 
 ## Tech Stack
 
-- **Frontend:** React + TypeScript + Tailwind CSS + React Router
-- **Backend:** Supabase (Postgres, Auth, Storage)
+- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS v4 + React Router v7
+- **State / Data:** TanStack Query v5
+- **Backend:** Supabase (Postgres, Auth, Row-Level Security)
 - **Charts:** Recharts
-- **AI:** Anthropic API (Claude)
-- **Hosting:** Vercel
+- **AI:** Anthropic API (Claude) *(planned)*
+- **Hosting:** Vercel *(planned)*
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── landing/          # Marketing page components (HeroBackground, Logo, cards)
+│   ├── AllocationEditor.tsx
+│   ├── ExpenseBreakdown.tsx
+│   ├── ExpensePopup.tsx
+│   ├── IncomeThisYearCard.tsx
+│   ├── LogPaycheckCard.tsx
+│   ├── PaycheckAllocation.tsx
+│   ├── PayFrequencyCard.tsx
+│   ├── ProjectedFundsCard.tsx
+│   ├── RecentActivity.tsx
+│   ├── SevenDayChart.tsx
+│   └── Sidebar.tsx
+├── pages/
+│   ├── Home.tsx          # Marketing landing page
+│   ├── Login.tsx         # Auth — email/password + Google OAuth
+│   ├── Signup.tsx        # New account creation
+│   ├── CheckEmail.tsx    # Post-signup confirmation prompt
+│   ├── Dashboard.tsx     # Main app view
+│   ├── History.tsx       # Full expense history with filtering
+│   └── Paycheck.tsx      # Log paychecks + manage allocation rules
+├── hooks/
+│   └── useCountUp.ts     # rAF-based animated number counter
+└── lib/
+    └── supabase.ts       # Supabase client
+```
 
 ## Database Schema
 
@@ -28,9 +63,10 @@ Terp Budget lets you split every paycheck across custom buckets (Checking, Savin
 |---|---|
 | `budgets` | Weekly spending limits per user |
 | `expenses` | Individual expense entries with category and note |
-| `paychecks` | Income entries with amount and note |
+| `paychecks` | Income entries with amount and date |
 | `buckets` | User-defined money buckets with allocation rules |
 | `paycheck_allocations` | Records how each paycheck was split across buckets |
+| `allocations` | Recurring allocation rule definitions per user |
 
 ## Getting Started
 
@@ -42,14 +78,14 @@ Terp Budget lets you split every paycheck across custom buckets (Checking, Savin
 ### Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/terp-budget.git
-cd terp-budget
+git clone https://github.com/YOUR_USERNAME/allocate.git
+cd allocate
 npm install
 ```
 
 ### Environment Variables
 
-Create a `.env.local` file in the root of the project:
+Create a `.env.local` file in the root:
 
 ```
 VITE_SUPABASE_URL=your_supabase_project_url
@@ -69,15 +105,19 @@ App runs at `http://localhost:5173`.
 
 | Route | Description |
 |---|---|
-| `/` | Dashboard — weekly spend, bucket balances, recent expenses |
+| `/` | Marketing landing page with animated product preview |
+| `/login` | Sign in with email/password or Google OAuth |
+| `/signup` | Create a new account |
+| `/check-email` | Email confirmation prompt after signup |
+| `/dashboard` | Weekly spend, bucket balances, recent expenses, charts |
 | `/history` | Full expense history with category filtering |
-| `/paycheck` | Log paychecks and manage bucket allocation rules |
-| `/settings` | Weekly budget and account preferences |
+| `/paycheck` | Log a paycheck and manage allocation rules |
 
 ## Roadmap
 
-- [ ] Goal planning with per-paycheck contribution tracking
-- [ ] AI financial assistant with full account context
-- [ ] Recurring transactions engine
+- [ ] AI financial assistant with full account context (Claude integration)
 - [ ] Plaid integration for automatic transaction import
+- [ ] Goal planning with per-paycheck contribution tracking
+- [ ] Recurring transactions engine
 - [ ] Mobile responsive polish
+- [ ] CI/CD pipeline (GitHub Actions)
