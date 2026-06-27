@@ -37,7 +37,7 @@ export default function Signup() {
     <div className='min-h-screen flex items-center justify-center bg-gray-50 px-4'>
       <div className='w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8'>
         <div className='mb-6 text-center'>
-          <h1 className='text-2xl font-bold text-gray-900'>Create your account</h1>
+          <h1 className='text-2xl font-bold text-gray-900'>Create Your Account</h1>
           <p className='text-sm text-gray-500 mt-1'>Built for interns who want to stay on top of their money</p>
         </div>
 
@@ -90,7 +90,7 @@ export default function Signup() {
             disabled={loading}
             className='w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-sm transition-colors'
           >
-            {loading ? 'Creating account...' : 'Create account'}
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
