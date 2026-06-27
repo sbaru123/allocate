@@ -255,7 +255,7 @@ export default function Login() {
                     autoComplete='email'
                     value={email}
                     onChange={function (e) { setEmail(e.target.value) }}
-                    placeholder='you@terpmail.umd.edu'
+                    placeholder='example@gmail.com'
                     className='w-full rounded-xl border px-4 py-2.5 text-sm transition-[border-color,box-shadow] focus:outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100 placeholder:text-gray-300'
                     style={{ borderColor: 'rgba(15,38,68,0.15)', color: 'rgb(15,38,68)' }}
                   />
