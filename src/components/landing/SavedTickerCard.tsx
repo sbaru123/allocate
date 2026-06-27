@@ -1,7 +1,7 @@
 import { useCountUp } from '@/hooks/useCountUp'
 
 export default function SavedTickerCard() {
-  const amount = useCountUp(12480, 1400, 700)
+  const amount = useCountUp(23840, 1400, 700)
 
   return (
     <div
