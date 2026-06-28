@@ -75,13 +75,30 @@ export default function Login() {
     setError('')
     setForgotSent(false)
     setLoading(true)
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password })
     if (authError) {
       setError(authError.message)
       setLoading(false)
       return
     }
-    navigate('/home')
+    // Check onboarding status before routing
+    const uid = authData.user?.id
+    if (uid) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('id', uid)
+        .single()
+      let lsCompleted = false
+      const lsRaw = localStorage.getItem(`allocate_ob_${uid}`)
+      if (lsRaw) {
+        try { lsCompleted = JSON.parse(lsRaw).onboarding_completed === true } catch { /* ignore */ }
+      }
+      const completed = profile?.onboarding_completed === true || lsCompleted
+      navigate(completed ? '/home' : '/onboarding')
+    } else {
+      navigate('/onboarding')
+    }
   }
 
   async function handleGoogle() {
