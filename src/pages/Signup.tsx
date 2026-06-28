@@ -266,7 +266,7 @@ export default function Signup() {
             >
               {/* Heading */}
               <h1 className='text-2xl font-bold mb-1' style={{ color: 'rgb(15,38,68)' }}>
-                Create your account
+                Create Your Account
               </h1>
               <p className='text-sm mb-6' style={{ color: 'rgba(15,38,68,0.55)' }}>
                 Start putting every dollar to work in two minutes.
@@ -448,7 +448,7 @@ export default function Signup() {
                     </>
                   ) : (
                     <>
-                      Create account
+                      Create Account
                       <span className='w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0'>
                         <svg width='9' height='9' viewBox='0 0 9 9' fill='none' aria-hidden='true'>
                           <path d='M2 7 L7 2 M3.5 2 H7 V5.5' stroke='white' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round' />
