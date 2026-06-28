@@ -66,7 +66,7 @@ export default function Login() {
 
   useEffect(function () {
     supabase.auth.getSession().then(function ({ data: { session } }) {
-      if (session) navigate('/dashboard', { replace: true })
+      if (session) navigate('/home', { replace: true })
     })
   }, [navigate])
 
@@ -81,7 +81,7 @@ export default function Login() {
       setLoading(false)
       return
     }
-    navigate('/dashboard')
+    navigate('/home')
   }
 
   async function handleGoogle() {
@@ -90,7 +90,7 @@ export default function Login() {
     setGoogleLoading(true)
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${window.location.origin}/home` },
     })
     if (authError) {
       setError(authError.message)
