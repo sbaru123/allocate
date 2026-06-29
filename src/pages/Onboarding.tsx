@@ -821,7 +821,7 @@ export default function Onboarding() {
     const budgetDel = await supabase.from('budgets').delete().eq('user_id', userId)
     if (budgetDel.error) console.error('[onboarding] budgets delete:', budgetDel.error)
 
-    const budgetIns = await supabase.from('budgets').insert({ user_id: userId, pay_frequency: payFrequency })
+    const budgetIns = await supabase.from('budgets').insert({ user_id: userId, pay_frequency: payFrequency, weekly_budget: parseFloat(weeklyBudget) || 0 })
     if (budgetIns.error) console.error('[onboarding] budgets insert:', budgetIns.error)
 
     // Initial paycheck

@@ -22,6 +22,7 @@ type PayFrequency = 'weekly' | 'biweekly' | 'monthly'
 
 type Budget = {
   pay_frequency: PayFrequency
+  weekly_budget: number | null
 }
 
 type Paycheck = {
@@ -95,7 +96,7 @@ async function fetchDashboardData(period: Period, periodStart: Date): Promise<Da
       .order('created_at', { ascending: false }),
     supabase.from('expenses').select('*').eq('user_id', user.id)
       .gte('created_at', chartStart.toISOString()).lt('created_at', chartEnd.toISOString()),
-    supabase.from('budgets').select('pay_frequency').eq('user_id', user.id).single(),
+    supabase.from('budgets').select('pay_frequency, weekly_budget').eq('user_id', user.id).single(),
     supabase.from('paychecks').select('*').eq('user_id', user.id)
       .gte('created_at', monthStart.toISOString()).lt('created_at', monthEnd.toISOString())
       .order('created_at', { ascending: false }),
@@ -194,8 +195,9 @@ export default function Dashboard() {
   const latestPaycheckAmt = latestPaycheckRecord?.amount ?? 0
 
   const weeksPerPeriod = budget?.pay_frequency === 'weekly' ? 1 : budget?.pay_frequency === 'monthly' ? 4 : 2
-  const unallocatedFraction = Math.max(100 - totalAllocated, 0) / 100
-  const weeklyBudget = latestPaycheckAmt > 0 ? (latestPaycheckAmt * unallocatedFraction) / weeksPerPeriod : 0
+  const weeklyBudget = (budget?.weekly_budget != null && budget.weekly_budget > 0)
+    ? budget.weekly_budget
+    : 0
   const periodLimit = period === 'week' ? weeklyBudget : weeklyBudget * (daysInPeriod / 7)
   const remaining = periodLimit - periodTotal
   const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
