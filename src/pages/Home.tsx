@@ -131,7 +131,7 @@ export default function Dashboard() {
     async function loadUser() {
       const { data } = await supabase.auth.getUser()
       if (!data.user) { navigate('/login'); return }
-      setUserName(data.user.user_metadata?.name ?? '')
+      setUserName(data.user.user_metadata?.full_name ?? '')
     }
     loadUser()
   }, [navigate])
