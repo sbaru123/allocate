@@ -1,166 +1,426 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import type { Expense, Allocation } from '@/types'
+import Distribution from '@/components/ExpenseBreakdown'
+import SevenDayChart from '@/components/SevenDayChart'
+import PaycheckAllocation from '@/components/PaycheckAllocation'
+import RecentActivity from '@/components/RecentActivity'
+import ExpensePopup from '@/components/ExpensePopup'
+import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
-import HeroBackground from '@/components/landing/HeroBackground'
-import Logo from '@/components/landing/Logo'
-import AllocationCard from '@/components/landing/AllocationCard'
-import ProjectionCard from '@/components/landing/ProjectionCard'
-import SafeToSpendCard from '@/components/landing/SafeToSpendCard'
-import SavedTickerCard from '@/components/landing/SavedTickerCard'
 
-export default function Home() {
+const CATEGORIES: { value: string; label: string; color: string; chartColor: string }[] = [
+  { value: 'food',          label: 'Food & Dining',  color: 'bg-orange-400', chartColor: '#fb923c' },
+  { value: 'transport',     label: 'Transport',       color: 'bg-blue-400',   chartColor: '#60a5fa' },
+  { value: 'entertainment', label: 'Entertainment',   color: 'bg-purple-400', chartColor: '#c084fc' },
+  { value: 'housing',       label: 'Housing',         color: 'bg-yellow-400', chartColor: '#facc15' },
+  { value: 'other',         label: 'Other',           color: 'bg-gray-400',   chartColor: '#9ca3af' },
+]
+
+type PayFrequency = 'weekly' | 'biweekly' | 'monthly'
+
+type Budget = {
+  pay_frequency: PayFrequency
+  weekly_budget: number | null
+}
+
+type Paycheck = {
+  id: string
+  amount: number
+  note: string
+  created_at: string
+}
+
+type Period = 'week' | 'month'
+
+type DashboardData = {
+  expenses: Expense[]
+  chartExpenses: Expense[]
+  budget: Budget | null
+  paychecks: Paycheck[]
+  allocations: Allocation[]
+  latestPaycheckRecord: Paycheck | null
+}
+
+function getPeriodRange(period: Period, anchorDate: Date) {
+  if (period === 'month') {
+    const start = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1)
+    const end = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1)
+    return { start, end }
+  }
+  const start = new Date(anchorDate)
+  const day = start.getDay()
+  const diff = start.getDate() - day + (day === 0 ? -6 : 1)
+  start.setHours(0, 0, 0, 0)
+  start.setDate(diff)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 7)
+  return { start, end }
+}
+
+function formatPeriodLabel(period: Period, start: Date, end: Date) {
+  if (period === 'month') {
+    return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
+  const weekEnd = new Date(end)
+  weekEnd.setDate(end.getDate() - 1)
+  const s = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const e = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${s} – ${e}`
+}
+
+function getDaysInPeriod(period: Period, start: Date) {
+  if (period === 'week') return 7
+  return new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()
+}
+
+function localDateStr(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+async function fetchDashboardData(period: Period, periodStart: Date): Promise<DashboardData> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { start, end } = getPeriodRange(period, periodStart)
+  const today = new Date()
+  const chartEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+  const chartStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+
+  const [expensesRes, chartExpensesRes, budgetRes, paychecksRes, allocationsRes, latestPaycheckRes] = await Promise.all([
+    supabase.from('expenses').select('*').eq('user_id', user.id)
+      .gte('created_at', start.toISOString()).lt('created_at', end.toISOString())
+      .order('created_at', { ascending: false }),
+    supabase.from('expenses').select('*').eq('user_id', user.id)
+      .gte('created_at', chartStart.toISOString()).lt('created_at', chartEnd.toISOString()),
+    supabase.from('budgets').select('pay_frequency, weekly_budget').eq('user_id', user.id).single(),
+    supabase.from('paychecks').select('*').eq('user_id', user.id)
+      .gte('created_at', monthStart.toISOString()).lt('created_at', monthEnd.toISOString())
+      .order('created_at', { ascending: false }),
+    supabase.from('allocations').select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: true }),
+    supabase.from('paychecks').select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: false }).limit(1).single(),
+  ])
+
+  return {
+    expenses: expensesRes.data ?? [],
+    chartExpenses: chartExpensesRes.data ?? [],
+    budget: budgetRes.data ?? null,
+    paychecks: paychecksRes.data ?? [],
+    allocations: allocationsRes.data ?? [],
+    latestPaycheckRecord: latestPaycheckRes.data ?? null,
+  }
+}
+
+export default function Dashboard() {
   const navigate = useNavigate()
 
+  // UI state
+  const [period, setPeriod] = useState<Period>('week')
+  const [anchorDate, setAnchorDate] = useState(() => new Date())
+  const [userName, setUserName] = useState('')
+
+  // Modal state
+  const [showForm, setShowForm] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+
   useEffect(function () {
-    supabase.auth.getSession().then(function ({ data: { session } }) {
-      if (session) navigate('/dashboard', { replace: true })
-    })
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) { navigate('/login'); return }
+      setUserName(data.user.user_metadata?.full_name ?? '')
+    }
+    loadUser()
   }, [navigate])
 
+  const periodRange = getPeriodRange(period, anchorDate)
+  const periodStartStr = localDateStr(periodRange.start)
+
+  const { data: dashData } = useQuery({
+    queryKey: ['dashboard', period, periodStartStr],
+    queryFn: function () { return fetchDashboardData(period, periodRange.start) },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const expenses = dashData?.expenses ?? []
+  const chartExpenses = dashData?.chartExpenses ?? []
+  const budget = dashData?.budget ?? null
+  const paychecks = dashData?.paychecks ?? []
+  const allocations = dashData?.allocations ?? []
+  const latestPaycheckRecord = dashData?.latestPaycheckRecord ?? null
+
+  function movePeriod(direction: -1 | 1) {
+    setAnchorDate(function (prev) {
+      const next = new Date(prev)
+      if (period === 'week') {
+        next.setDate(prev.getDate() + direction * 7)
+      } else {
+        next.setMonth(prev.getMonth() + direction)
+      }
+      return next
+    })
+  }
+
+  function goToCurrentPeriod() {
+    setAnchorDate(new Date())
+  }
+
+  function closeModal() {
+    setShowForm(false)
+    setEditingExpense(null)
+  }
+
+  // ── Derived values ──────────────────────────────────────────────────────────
+
+  const periodLabel = formatPeriodLabel(period, periodRange.start, periodRange.end)
+  const periodName = period === 'week' ? 'week' : 'month'
+  const daysInPeriod = getDaysInPeriod(period, periodRange.start)
+
+  const periodTotal = expenses.reduce(function (sum, e) { return sum + e.amount }, 0)
+  const byCategory = CATEGORIES.map(function (cat) {
+    return {
+      ...cat,
+      total: expenses
+        .filter(function (e) { return e.category === cat.value })
+        .reduce(function (sum, e) { return sum + e.amount }, 0),
+    }
+  })
+
+  const incomeThisMonth = paychecks.reduce(function (sum, p) { return sum + p.amount }, 0)
+  const totalAllocated = allocations.reduce(function (s, a) { return s + a.percentage }, 0)
+  const latestPaycheckAmt = latestPaycheckRecord?.amount ?? 0
+
+  const weeksPerPeriod = budget?.pay_frequency === 'weekly' ? 1 : budget?.pay_frequency === 'monthly' ? 4 : 2
+  const weeklyBudget = (budget?.weekly_budget != null && budget.weekly_budget > 0)
+    ? budget.weekly_budget
+    : 0
+  const periodLimit = period === 'week' ? weeklyBudget : weeklyBudget * (daysInPeriod / 7)
+  const remaining = periodLimit - periodTotal
+  const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
+
+  function getAiInsight() {
+    if (periodLimit === 0) {
+      return 'Log a paycheck and set up allocations on the Paycheck page to start tracking your spending budget.'
+    }
+    if (remaining < 0) {
+      const topCat = [...byCategory].sort(function (a, b) { return b.total - a.total })[0]
+      return `You\'re $${Math.abs(remaining).toFixed(0)} over budget this ${periodName}. Biggest category: ${topCat?.label ?? 'Other'}.`
+    }
+    if (progress > 75) {
+      return `Heads up — you\'ve used ${Math.round(progress)}% of your ${periodName}ly budget. $${remaining.toFixed(0)} left.`
+    }
+    if (progress < 30 && periodTotal > 0) {
+      return `Great start! Only $${periodTotal.toFixed(0)} spent so far this ${periodName}. You\'re well within budget.`
+    }
+    if (periodTotal === 0) {
+      return `No expenses logged yet this ${periodName}. Hit the + button to get started.`
+    }
+    return `On track — $${remaining.toFixed(0)} remaining for the ${periodName}.`
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
   return (
-    <div className='relative min-h-screen overflow-hidden'>
-      <HeroBackground />
+    <div className='min-h-screen bg-gray-50 dark:bg-[#06101f]'>
+      <Sidebar />
 
-      {/* ── Navbar ── */}
-      <nav className='relative z-20 flex items-center justify-between px-8 py-5'>
-        <Logo />
+      <main className='ml-56 px-6 py-6'>
+        <div className='mx-auto max-w-7xl space-y-5'>
 
-        {/* Center links — md+ */}
-        <div className='hidden md:flex items-center gap-7'>
-          {['Features', 'How it works', 'Pricing'].map(function (label) {
-            return (
-              <a
-                key={label}
-                href='#'
-                className='text-sm font-medium transition-colors hover:text-sky-700'
-                style={{ color: 'rgba(15,38,68,0.62)' }}
+          {/* Header + period toggle */}
+          <div className='flex items-end justify-between'>
+            <div>
+              <h1 className='text-xl font-bold text-gray-900 dark:text-slate-100'>
+                {userName ? `Hello, ${userName.split(' ')[0]} 👋` : 'Hello there 👋'}
+              </h1>
+              <p className='text-sm text-gray-500 dark:text-slate-400'>Here's your overview for the {periodName}.</p>
+            </div>
+            <div className='flex items-center gap-1 bg-white dark:bg-[#0e1f38] border border-gray-200 dark:border-[#1e3354] rounded-xl p-1 shadow-sm'>
+              <button
+                type='button'
+                onClick={() => setPeriod('week')}
+                className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                  period === 'week' ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:text-slate-400 dark:hover:bg-[#152238]'
+                }`}
               >
-                {label}
-              </a>
-            )
-          })}
-        </div>
-
-        {/* Right CTAs */}
-        <div className='flex items-center gap-2.5'>
-          <Link
-            to='/login'
-            className='text-sm font-semibold px-4 py-1.5 rounded-full border transition-all hover:scale-[1.03] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500'
-            style={{
-              color: 'rgb(15,38,68)',
-              borderColor: 'rgba(15,38,68,0.16)',
-              backgroundColor: 'rgba(255,255,255,0.60)',
-            }}
-          >
-            Log in
-          </Link>
-          <Link
-            to='/signup'
-            className='flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full bg-sky-600 text-white hover:bg-sky-700 transition-all hover:scale-[1.03] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500'
-          >
-            Get Started
-            <span className='w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0'>
-              <svg width='8' height='8' viewBox='0 0 8 8' fill='none' aria-hidden='true'>
-                <path d='M1.5 6.5 L6.5 1.5 M3 1.5 H6.5 V5' stroke='white' strokeWidth='1.3' strokeLinecap='round' strokeLinejoin='round' />
-              </svg>
-            </span>
-          </Link>
-        </div>
-      </nav>
-
-      {/* ── Floating product cards (lg+) ── */}
-      <div className='hidden lg:block'>
-        <div className='card-reveal-tl absolute top-20 left-10 xl:left-16 z-10' style={{ animationDelay: '0.55s' }}>
-          <div className='card-bob' style={{ animationDelay: '0.5s' }}>
-            <ProjectionCard />
+                Week
+              </button>
+              <button
+                type='button'
+                onClick={() => setPeriod('month')}
+                className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                  period === 'month' ? 'bg-sky-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:text-slate-400 dark:hover:bg-[#152238]'
+                }`}
+              >
+                Month
+              </button>
+            </div>
           </div>
-        </div>
-        <div className='card-reveal-tr absolute top-20 right-10 xl:right-16 z-10' style={{ animationDelay: '0.75s' }}>
-          <div className='card-bob' style={{ animationDelay: '1.2s' }}>
-            <AllocationCard />
+
+          {/* Period navigator */}
+          <div className='flex items-center gap-2'>
+            <button
+              type='button'
+              onClick={() => movePeriod(-1)}
+              className='h-7 w-7 rounded-lg border border-gray-200 dark:border-[#1e3354] text-base text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-[#0e1f38] hover:text-gray-600 dark:hover:text-slate-300 transition-colors flex items-center justify-center'
+              aria-label={`Previous ${periodName}`}
+            >
+              ‹
+            </button>
+            <button
+              type='button'
+              onClick={goToCurrentPeriod}
+              className='text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-colors px-2 py-0.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/20'
+            >
+              {periodLabel}
+            </button>
+            <button
+              type='button'
+              onClick={() => movePeriod(1)}
+              className='h-7 w-7 rounded-lg border border-gray-200 dark:border-[#1e3354] text-base text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-[#0e1f38] hover:text-gray-600 dark:hover:text-slate-300 transition-colors flex items-center justify-center'
+              aria-label={`Next ${periodName}`}
+            >
+              ›
+            </button>
           </div>
-        </div>
-        <div className='card-reveal-bl absolute bottom-10 left-10 xl:left-16 z-10' style={{ animationDelay: '0.65s' }}>
-          <div className='card-bob' style={{ animationDelay: '2.5s' }}>
-            <SafeToSpendCard />
+
+          {/* 4-up KPI row */}
+          <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Spent this {periodName}</p>
+              <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>${periodTotal.toFixed(2)}</p>
+              {periodLimit > 0 ? (
+                <div className='mt-2.5'>
+                  <div className='w-full bg-gray-100 dark:bg-[#0a1628] rounded-full h-1.5 overflow-hidden'>
+                    <div
+                      className={`h-1.5 rounded-full transition-[width,background-color] duration-500 ${progress > 90 ? 'bg-red-400' : 'bg-sky-400'}`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>{Math.round(progress)}% of ${periodLimit.toFixed(0)} limit</p>
+                </div>
+              ) : (
+                <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>No budget set</p>
+              )}
+            </div>
+
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Safe to Spend</p>
+              {periodLimit > 0 ? (
+                <>
+                  <p className={`text-2xl font-bold ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                    {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
+                  </p>
+                  <p className={`text-xs mt-1 ${remaining < 0 ? 'text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
+                    {remaining < 0 ? 'over budget' : `remaining this ${periodName}`}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className='text-2xl font-bold text-gray-300 dark:text-slate-600'>—</p>
+                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Log a paycheck →</Link>
+                </>
+              )}
+            </div>
+
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Income This Month</p>
+              {incomeThisMonth > 0 ? (
+                <>
+                  <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>${incomeThisMonth.toFixed(2)}</p>
+                  <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>Last paycheck: ${latestPaycheckAmt.toFixed(2)}</p>
+                </>
+              ) : (
+                <>
+                  <p className='text-2xl font-bold text-gray-300 dark:text-slate-600'>—</p>
+                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Log a paycheck →</Link>
+                </>
+              )}
+            </div>
+
+            <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Allocated</p>
+              {allocations.length > 0 ? (
+                <>
+                  <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>{totalAllocated.toFixed(0)}%</p>
+                  <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>
+                    {allocations.length} goal{allocations.length !== 1 ? 's' : ''} set up
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className='text-2xl font-bold text-gray-300 dark:text-slate-600'>—</p>
+                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Add allocations →</Link>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-        <div className='card-reveal-br absolute bottom-10 right-10 xl:right-16 z-10' style={{ animationDelay: '0.85s' }}>
-          <div className='card-bob' style={{ animationDelay: '1.8s' }}>
-            <SavedTickerCard />
+
+          {/* AllocateAI insight strip */}
+          <div className='bg-sky-50 dark:bg-blue-950/40 border border-sky-100 dark:border-blue-900/50 rounded-2xl px-5 py-4 flex items-center justify-between gap-4'>
+            <div className='flex items-center gap-3 min-w-0'>
+              <span className='text-lg flex-shrink-0'>💡</span>
+              <p className='text-sm text-sky-800 dark:text-sky-300 font-medium leading-snug'>{getAiInsight()}</p>
+            </div>
+            <button
+              type='button'
+              disabled
+              className='flex-shrink-0 text-xs font-semibold text-sky-400 border border-sky-200 dark:border-sky-800 bg-white dark:bg-[#0e1f38] rounded-lg px-3 py-1.5 cursor-not-allowed opacity-60 whitespace-nowrap'
+            >
+              Ask AllocateAI
+            </button>
           </div>
+
+          <div className='grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start'>
+
+            <div className='space-y-4'>
+              <SevenDayChart chartExpenses={chartExpenses} />
+              <PaycheckAllocation
+                allocations={allocations}
+                latestPaycheckAmt={latestPaycheckAmt}
+                totalAllocated={totalAllocated}
+              />
+              <RecentActivity
+                expenses={expenses}
+                periodName={periodName}
+                onExpenseClick={setEditingExpense}
+              />
+            </div>
+
+            <div className='space-y-4'>
+              <Distribution
+                items={byCategory}
+                periodName={periodName}
+                total={periodTotal}
+                budgetLimit={periodLimit}
+                remaining={remaining}
+              />
+            </div>
+          </div>
+
         </div>
-      </div>
+      </main>
 
-      {/* ── Hero center content ── */}
-      <div className='relative z-20 flex flex-col items-center justify-center text-center px-6 gap-5 min-h-[calc(100vh-72px)]'>
-        {/* Badge */}
-        <div
-          className='reveal-up flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold border'
-          style={{
-            animationDelay: '0.15s',
-            color: 'rgb(15,38,68)',
-            backgroundColor: 'rgba(255,255,255,0.70)',
-            borderColor: 'rgba(15,38,68,0.10)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <svg width='13' height='13' viewBox='0 0 14 14' fill='none' aria-hidden='true'>
-            <path d='M7 1 L8.2 5.8 L13 7 L8.2 8.2 L7 13 L5.8 8.2 L1 7 L5.8 5.8 Z' fill='#0284c7' />
-          </svg>
-          Built-in AllocateAI · your wealth assistant
-        </div>
+      <button
+        onClick={function () { setShowForm(true) }}
+        className='group fixed bottom-6 right-6 flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white rounded-full h-14 px-4 shadow-lg shadow-sky-200 overflow-hidden transition-[width,background-color] duration-300 ease-in-out w-14 hover:w-52 active:scale-[0.97]'
+      >
+        <span className='text-lg font-bold leading-none flex-shrink-0 flex items-center'>+</span>
+        <span className='text-sm font-semibold whitespace-nowrap max-w-0 overflow-hidden group-hover:max-w-xs group-hover:pl-2 transition-[max-width,padding] duration-300 delay-75 flex items-center'>
+          Log an Expense
+        </span>
+      </button>
 
-        {/* Headline */}
-        <h1
-          className='reveal-up font-bold tracking-tight leading-[1.06] text-4xl sm:text-5xl xl:text-[64px]'
-          style={{ animationDelay: '0.28s', color: 'rgb(15,38,68)' }}
-        >
-          Every dollar,<br />working for you.
-        </h1>
-
-        {/* Subhead */}
-        <p
-          className='reveal-up text-base sm:text-lg max-w-xl leading-relaxed'
-          style={{ animationDelay: '0.42s', color: 'rgba(15,38,68,0.62)' }}
-        >
-          Allocate splits every paycheck into the goals that build real wealth — investing, savings, and the life you want — automatically.
-        </p>
-
-        {/* CTAs */}
-        <div className='reveal-up flex flex-col sm:flex-row items-center gap-3' style={{ animationDelay: '0.55s' }}>
-          <Link
-            to='/signup'
-            className='flex items-center gap-2.5 px-6 py-3 rounded-full bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 shadow-md shadow-sky-200/70 transition-all hover:scale-[1.03] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500'
-          >
-            Get Started — it&apos;s free
-            <span className='w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0'>
-              <svg width='9' height='9' viewBox='0 0 9 9' fill='none' aria-hidden='true'>
-                <path d='M2 7 L7 2 M3.5 2 H7 V5.5' stroke='white' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round' />
-              </svg>
-            </span>
-          </Link>
-          <Link
-            to='/login'
-            className='px-6 py-3 rounded-full text-sm font-semibold border transition-all hover:scale-[1.03] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500'
-            style={{
-              color: 'rgb(15,38,68)',
-              backgroundColor: 'rgba(255,255,255,0.75)',
-              borderColor: 'rgba(15,38,68,0.15)',
-            }}
-          >
-            Log in
-          </Link>
-        </div>
-
-        {/* Trust line */}
-        <p
-          className='reveal-up text-xs'
-          style={{ animationDelay: '0.68s', color: 'rgba(15,38,68,0.42)' }}
-        >
-          No fees · Bank-grade security · Join 20,000+ students
-        </p>
-      </div>
+      <ExpensePopup
+        key={editingExpense?.id ?? (showForm ? 'new' : 'closed')}
+        open={showForm || !!editingExpense}
+        onClose={closeModal}
+        expense={editingExpense}
+      />
     </div>
   )
 }

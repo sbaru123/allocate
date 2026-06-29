@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/hooks/useTheme'
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
+  { to: '/home', label: 'Home' },
   { to: '/paycheck', label: 'Paycheck' },
   { to: '/history', label: 'History' }
 ]

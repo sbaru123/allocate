@@ -147,6 +147,25 @@
   animation: shimmer-sweep 1.2s var(--ease-out) 0.9s both;
 }
 
+/* Success check pop-in */
+@keyframes popcheck {
+  0%   { transform: scale(0);   opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.popcheck {
+  animation: popcheck 0.5s var(--ease-out) both;
+}
+
+/* Success ring pulse */
+@keyframes ring-pulse {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+.ring-pulse {
+  animation: ring-pulse 1.6s ease-out infinite;
+}
+
 /* Reduced motion — settle everything to its visible end-state */
 @media (prefers-reduced-motion: reduce) {
   .blob-1, .blob-2, .blob-3 { animation: none; }
@@ -164,4 +183,6 @@
     opacity: 1;
     transform: none;
   }
+  .popcheck  { animation: none; opacity: 1; transform: scale(1); }
+  .ring-pulse { animation: none; opacity: 0; }
 }
