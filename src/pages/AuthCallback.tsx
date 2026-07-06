@@ -1,22 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { isOnboardingCompleted } from '@/lib/onboarding'
 import HeroBackground from '@/components/landing/HeroBackground'
 
 async function routeAfterAuth(uid: string, nav: (path: string, opts?: { replace?: boolean }) => void) {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('onboarding_completed')
-    .eq('id', uid)
-    .single()
-
-  let lsCompleted = false
-  const lsRaw = localStorage.getItem(`allocate_ob_${uid}`)
-  if (lsRaw) {
-    try { lsCompleted = JSON.parse(lsRaw).onboarding_completed === true } catch { /* ignore */ }
-  }
-
-  const completed = profile?.onboarding_completed === true || lsCompleted
+  const completed = await isOnboardingCompleted(uid)
   nav(completed ? '/home' : '/onboarding', { replace: true })
 }
 
