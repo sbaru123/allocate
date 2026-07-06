@@ -22,7 +22,6 @@ type PayFrequency = 'weekly' | 'biweekly' | 'monthly'
 
 type Budget = {
   pay_frequency: PayFrequency
-  weekly_budget: number | null
 }
 
 type Paycheck = {
@@ -38,6 +37,7 @@ type DashboardData = {
   expenses: Expense[]
   chartExpenses: Expense[]
   budget: Budget | null
+  weeklyBudget: number
   paychecks: Paycheck[]
   allocations: Allocation[]
   latestPaycheckRecord: Paycheck | null
@@ -87,32 +87,40 @@ async function fetchDashboardData(period: Period, periodStart: Date): Promise<Da
   const today = new Date()
   const chartEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
   const chartStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
 
-  const [expensesRes, chartExpensesRes, budgetRes, paychecksRes, allocationsRes, latestPaycheckRes] = await Promise.all([
+  // Fetch paychecks without a server-side date filter to avoid timezone drift issues.
+  // We filter client-side below using local Date comparison.
+  const [expensesRes, chartExpensesRes, budgetRes, paychecksRes, allocationsRes, profileRes] = await Promise.all([
     supabase.from('expenses').select('*').eq('user_id', user.id)
       .gte('created_at', start.toISOString()).lt('created_at', end.toISOString())
       .order('created_at', { ascending: false }),
     supabase.from('expenses').select('*').eq('user_id', user.id)
       .gte('created_at', chartStart.toISOString()).lt('created_at', chartEnd.toISOString()),
-    supabase.from('budgets').select('pay_frequency, weekly_budget').eq('user_id', user.id).single(),
+    supabase.from('budgets').select('pay_frequency').eq('user_id', user.id).single(),
     supabase.from('paychecks').select('*').eq('user_id', user.id)
-      .gte('created_at', monthStart.toISOString()).lt('created_at', monthEnd.toISOString())
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }).limit(100),
     supabase.from('allocations').select('*').eq('user_id', user.id)
       .order('created_at', { ascending: true }),
-    supabase.from('paychecks').select('*').eq('user_id', user.id)
-      .order('created_at', { ascending: false }).limit(1).single(),
+    // weekly_budget lives in profiles (guaranteed column); budgets.weekly_budget may not exist
+    supabase.from('profiles').select('weekly_budget').eq('id', user.id).single(),
   ])
+
+  const allPaychecks: Paycheck[] = paychecksRes.data ?? []
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+  const monthlyPaychecks = allPaychecks.filter(function (p) {
+    const d = new Date(p.created_at)
+    return d >= monthStart && d < monthEnd
+  })
 
   return {
     expenses: expensesRes.data ?? [],
     chartExpenses: chartExpensesRes.data ?? [],
     budget: budgetRes.data ?? null,
-    paychecks: paychecksRes.data ?? [],
+    weeklyBudget: (profileRes.data?.weekly_budget as number) ?? 0,
+    paychecks: monthlyPaychecks,
     allocations: allocationsRes.data ?? [],
-    latestPaycheckRecord: latestPaycheckRes.data ?? null,
+    latestPaycheckRecord: allPaychecks[0] ?? null,
   }
 }
 
@@ -195,9 +203,7 @@ export default function Dashboard() {
   const latestPaycheckAmt = latestPaycheckRecord?.amount ?? 0
 
   const weeksPerPeriod = budget?.pay_frequency === 'weekly' ? 1 : budget?.pay_frequency === 'monthly' ? 4 : 2
-  const weeklyBudget = (budget?.weekly_budget != null && budget.weekly_budget > 0)
-    ? budget.weekly_budget
-    : 0
+  const weeklyBudget = dashData?.weeklyBudget ?? 0
   const periodLimit = period === 'week' ? weeklyBudget : weeklyBudget * (daysInPeriod / 7)
   const remaining = periodLimit - periodTotal
   const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
