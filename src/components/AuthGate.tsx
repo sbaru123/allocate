@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { isOnboardingCompleted } from '@/lib/onboarding'
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
@@ -15,27 +16,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         return
       }
 
-      const uid = session.user.id
-
-      // Check profiles table first
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', uid)
-        .single()
-
-      // Fall back to localStorage
-      let lsCompleted = false
-      const lsRaw = localStorage.getItem(`allocate_ob_${uid}`)
-      if (lsRaw) {
-        try {
-          lsCompleted = JSON.parse(lsRaw).onboarding_completed === true
-        } catch {
-          // ignore corrupt data
-        }
-      }
-
-      const completed = profile?.onboarding_completed === true || lsCompleted
+      const completed = await isOnboardingCompleted(session.user.id)
 
       if (!completed) {
         navigate('/onboarding', { replace: true })
