@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import ensureUserData from '@/lib/onboarding'
 import HeroBackground from '@/components/landing/HeroBackground'
 import Logo from '@/components/landing/Logo'
 import AllocationCard from '@/components/landing/AllocationCard'
@@ -81,20 +82,10 @@ export default function Login() {
       setLoading(false)
       return
     }
-    // Check onboarding status before routing
+    // Check onboarding status (and backfill any missing rows) before routing
     const uid = authData.user?.id
     if (uid) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', uid)
-        .single()
-      let lsCompleted = false
-      const lsRaw = localStorage.getItem(`allocate_ob_${uid}`)
-      if (lsRaw) {
-        try { lsCompleted = JSON.parse(lsRaw).onboarding_completed === true } catch { /* ignore */ }
-      }
-      const completed = profile?.onboarding_completed === true || lsCompleted
+      const completed = await ensureUserData(uid)
       navigate(completed ? '/home' : '/onboarding')
     } else {
       navigate('/onboarding')
