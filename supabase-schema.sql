@@ -74,6 +74,19 @@ alter table budgets
 alter table budgets
   add column if not exists weekly_budget numeric not null default 0;
 
+-- Migration: add rollover_start to profiles (run in Supabase SQL editor).
+-- The leftover-spending rollover ignores weeks (and expenses) before this date.
+alter table profiles
+  add column if not exists rollover_start date;
+
+-- Migration: add projection window to profiles (run in Supabase SQL editor).
+-- Projected Allocated Funds counts paychecks between these dates instead of
+-- assuming a full year (e.g. a summer internship: June 22 – Dec 31).
+alter table profiles
+  add column if not exists projection_start date;
+alter table profiles
+  add column if not exists projection_end date;
+
 
 -- Profiles table (onboarding data)
 CREATE TABLE IF NOT EXISTS profiles (
