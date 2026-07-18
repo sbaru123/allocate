@@ -90,29 +90,47 @@ async function fetchDashboardData(period: Period, periodStart: Date): Promise<Da
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
 
-  const [expensesRes, chartExpensesRes, budgetRes, paychecksRes, allocationsRes, latestPaycheckRes] = await Promise.all([
+  const [expensesRes, chartExpensesRes, budgetRes, profileRes, paychecksRes, allocationsRes] = await Promise.all([
     supabase.from('expenses').select('*').eq('user_id', user.id)
       .gte('created_at', start.toISOString()).lt('created_at', end.toISOString())
       .order('created_at', { ascending: false }),
     supabase.from('expenses').select('*').eq('user_id', user.id)
       .gte('created_at', chartStart.toISOString()).lt('created_at', chartEnd.toISOString()),
     supabase.from('budgets').select('pay_frequency, weekly_budget').eq('user_id', user.id).single(),
+    supabase.from('profiles').select('pay_frequency, weekly_budget').eq('id', user.id).single(),
     supabase.from('paychecks').select('*').eq('user_id', user.id)
-      .gte('created_at', monthStart.toISOString()).lt('created_at', monthEnd.toISOString())
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }).limit(100),
     supabase.from('allocations').select('*').eq('user_id', user.id)
       .order('created_at', { ascending: true }),
-    supabase.from('paychecks').select('*').eq('user_id', user.id)
-      .order('created_at', { ascending: false }).limit(1).single(),
   ])
+
+  // Filter to the current month client-side. Server-side ISO ranges can drop
+  // paychecks near month boundaries because of timezone drift.
+  const allPaychecks: Paycheck[] = paychecksRes.data ?? []
+  const monthPaychecks = allPaychecks.filter(function (p) {
+    const d = new Date(p.created_at)
+    return d >= monthStart && d < monthEnd
+  })
+
+  // Prefer budgets, but fall back to profiles — accounts that onboarded
+  // before the budgets table (or its weekly_budget column) existed only
+  // have these values on their profile row.
+  const budgetRow = budgetRes.data
+  const profileRow = profileRes.data
+  const budget: Budget | null = (budgetRow || profileRow)
+    ? {
+        pay_frequency: (budgetRow?.pay_frequency ?? profileRow?.pay_frequency ?? 'biweekly') as PayFrequency,
+        weekly_budget: budgetRow?.weekly_budget ?? profileRow?.weekly_budget ?? null,
+      }
+    : null
 
   return {
     expenses: expensesRes.data ?? [],
     chartExpenses: chartExpensesRes.data ?? [],
-    budget: budgetRes.data ?? null,
-    paychecks: paychecksRes.data ?? [],
+    budget,
+    paychecks: monthPaychecks,
     allocations: allocationsRes.data ?? [],
-    latestPaycheckRecord: latestPaycheckRes.data ?? null,
+    latestPaycheckRecord: allPaychecks[0] ?? null,
   }
 }
 
@@ -132,7 +150,8 @@ export default function Dashboard() {
     async function loadUser() {
       const { data } = await supabase.auth.getUser()
       if (!data.user) { navigate('/login'); return }
-      setUserName(data.user.user_metadata?.full_name ?? '')
+      const meta = data.user.user_metadata ?? {}
+      setUserName(meta.full_name || meta.name || data.user.email?.split('@')[0] || '')
     }
     loadUser()
   }, [navigate])
@@ -194,7 +213,6 @@ export default function Dashboard() {
   const totalAllocated = allocations.reduce(function (s, a) { return s + a.percentage }, 0)
   const latestPaycheckAmt = latestPaycheckRecord?.amount ?? 0
 
-  const weeksPerPeriod = budget?.pay_frequency === 'weekly' ? 1 : budget?.pay_frequency === 'monthly' ? 4 : 2
   const weeklyBudget = (budget?.weekly_budget != null && budget.weekly_budget > 0)
     ? budget.weekly_budget
     : 0
@@ -329,7 +347,7 @@ export default function Dashboard() {
 
             <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
               <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Income This Month</p>
-              {incomeThisMonth > 0 ? (
+              {latestPaycheckRecord ? (
                 <>
                   <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>${incomeThisMonth.toFixed(2)}</p>
                   <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>Last paycheck: ${latestPaycheckAmt.toFixed(2)}</p>

@@ -6,12 +6,14 @@ import Sidebar from '@/components/Sidebar'
 import PayFrequencyCard from '@/components/PayFrequencyCard'
 import LogPaycheckCard from '@/components/LogPaycheckCard'
 import IncomeThisYearCard from '@/components/IncomeThisYearCard'
+import WeeklyBudgetCard from '@/components/WeeklyBudgetCard'
 import AllocationEditor from '@/components/AllocationEditor'
 import ProjectedFundsCard from '@/components/ProjectedFundsCard'
 import { supabase } from '@/lib/supabase'
 
 type PaycheckData = {
   payFrequency: PayFrequency
+  weeklyBudget: number
   paychecks: Paycheck[]
   allocations: Allocation[]
 }
@@ -20,14 +22,16 @@ async function fetchPaycheckData(): Promise<PaycheckData> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const [budgetRes, paychecksRes, allocationsRes] = await Promise.all([
-    supabase.from('budgets').select('pay_frequency').eq('user_id', user.id).single(),
+  const [budgetRes, profileRes, paychecksRes, allocationsRes] = await Promise.all([
+    supabase.from('budgets').select('pay_frequency, weekly_budget').eq('user_id', user.id).single(),
+    supabase.from('profiles').select('pay_frequency, weekly_budget').eq('id', user.id).single(),
     supabase.from('paychecks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('allocations').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
   ])
 
   return {
-    payFrequency: (budgetRes.data?.pay_frequency as PayFrequency) ?? 'biweekly',
+    payFrequency: (budgetRes.data?.pay_frequency ?? profileRes.data?.pay_frequency ?? 'biweekly') as PayFrequency,
+    weeklyBudget: budgetRes.data?.weekly_budget ?? profileRes.data?.weekly_budget ?? 0,
     paychecks: paychecksRes.data ?? [],
     allocations: allocationsRes.data ?? [],
   }
@@ -51,6 +55,7 @@ export default function Paycheck() {
   })
 
   const payFrequency = data?.payFrequency ?? 'biweekly'
+  const weeklyBudget = data?.weeklyBudget ?? 0
   const paychecks = data?.paychecks ?? []
   const allocations = data?.allocations ?? []
   const latestPaycheck = paychecks[0]?.amount ?? 0
@@ -77,6 +82,12 @@ export default function Paycheck() {
                 allocations={allocations}
               />
               <LogPaycheckCard paychecks={paychecks} />
+              <WeeklyBudgetCard
+                weeklyBudget={weeklyBudget}
+                latestPaycheck={latestPaycheck}
+                payFrequency={payFrequency}
+                allocations={allocations}
+              />
               <IncomeThisYearCard paychecks={paychecks} />
             </div>
 
