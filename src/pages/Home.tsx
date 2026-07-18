@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Expense, Allocation } from '@/types'
 import Distribution from '@/components/ExpenseBreakdown'
 import SevenDayChart from '@/components/SevenDayChart'
@@ -34,13 +34,21 @@ type Paycheck = {
 
 type Period = 'week' | 'month'
 
+type SlimExpense = {
+  amount: number
+  created_at: string
+}
+
 type DashboardData = {
   expenses: Expense[]
   chartExpenses: Expense[]
+  allExpenses: SlimExpense[]
   budget: Budget | null
   paychecks: Paycheck[]
   allocations: Allocation[]
   latestPaycheckRecord: Paycheck | null
+  firstPaycheckAt: string | null
+  rolloverStart: string | null
 }
 
 function getPeriodRange(period: Period, anchorDate: Date) {
@@ -79,6 +87,74 @@ function localDateStr(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+function getWeekStart(date: Date) {
+  const start = new Date(date)
+  const day = start.getDay()
+  const diff = start.getDate() - day + (day === 0 ? -6 : 1)
+  start.setHours(0, 0, 0, 0)
+  start.setDate(diff)
+  return start
+}
+
+/**
+ * Rollover fund as of a given week: every week completed *before* that week
+ * contributes whatever was left of its weekly budget (negative if overspent).
+ * The viewed week itself only draws the fund down when its spending exceeds
+ * the weekly budget (i.e. Safe to Spend is used up). So the fund is different
+ * for every week: $20 left in week 1 → week 2 shows $20; $40 more left in
+ * week 2 → week 3 shows $60, and so on.
+ */
+function computeLeftoverFund(
+  weeklyBudget: number,
+  allExpenses: SlimExpense[],
+  firstPaycheckAt: string | null,
+  rolloverStart: string | null,
+  asOf: Date,
+) {
+  if (weeklyBudget <= 0) return { fund: 0, completedWeeks: 0 }
+
+  let startWeek: Date
+  if (rolloverStart) {
+    // User-chosen start: weeks and expenses before it don't count.
+    // Date columns come back as 'YYYY-MM-DD'; anchor to local midnight to
+    // avoid the UTC-parse shifting it into the previous day.
+    startWeek = getWeekStart(new Date(`${rolloverStart}T00:00:00`))
+  } else {
+    // Default: earliest activity — first paycheck or first expense
+    const candidates: Date[] = []
+    if (firstPaycheckAt) candidates.push(new Date(firstPaycheckAt))
+    if (allExpenses.length > 0) candidates.push(new Date(allExpenses[0].created_at))
+    if (candidates.length === 0) return { fund: 0, completedWeeks: 0 }
+    startWeek = getWeekStart(new Date(Math.min(...candidates.map(function (d) { return d.getTime() }))))
+  }
+
+  const currentWeekStart = getWeekStart(asOf)
+  if (currentWeekStart < startWeek) return { fund: 0, completedWeeks: 0 }
+
+  // Bucket spending by week
+  const spentByWeek = new Map<number, number>()
+  for (const e of allExpenses) {
+    const key = getWeekStart(new Date(e.created_at)).getTime()
+    spentByWeek.set(key, (spentByWeek.get(key) ?? 0) + e.amount)
+  }
+
+  let fund = 0
+  let completedWeeks = 0
+  const cursor = new Date(startWeek)
+  while (cursor < currentWeekStart) {
+    fund += weeklyBudget - (spentByWeek.get(cursor.getTime()) ?? 0)
+    completedWeeks += 1
+    cursor.setDate(cursor.getDate() + 7)
+  }
+
+  // Current week only taps the fund once the weekly budget is exhausted
+  const spentThisWeek = spentByWeek.get(currentWeekStart.getTime()) ?? 0
+  fund -= Math.max(0, spentThisWeek - weeklyBudget)
+
+  // Can go negative — overspending beyond what past weeks saved up
+  return { fund, completedWeeks }
+}
+
 async function fetchDashboardData(period: Period, periodStart: Date): Promise<DashboardData> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -90,18 +166,22 @@ async function fetchDashboardData(period: Period, periodStart: Date): Promise<Da
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
 
-  const [expensesRes, chartExpensesRes, budgetRes, profileRes, paychecksRes, allocationsRes] = await Promise.all([
+  const [expensesRes, chartExpensesRes, allExpensesRes, budgetRes, profileRes, paychecksRes, allocationsRes, firstPaycheckRes] = await Promise.all([
     supabase.from('expenses').select('*').eq('user_id', user.id)
       .gte('created_at', start.toISOString()).lt('created_at', end.toISOString())
       .order('created_at', { ascending: false }),
     supabase.from('expenses').select('*').eq('user_id', user.id)
       .gte('created_at', chartStart.toISOString()).lt('created_at', chartEnd.toISOString()),
+    supabase.from('expenses').select('amount, created_at').eq('user_id', user.id)
+      .order('created_at', { ascending: true }),
     supabase.from('budgets').select('pay_frequency, weekly_budget').eq('user_id', user.id).single(),
-    supabase.from('profiles').select('pay_frequency, weekly_budget').eq('id', user.id).single(),
+    supabase.from('profiles').select('pay_frequency, weekly_budget, rollover_start').eq('id', user.id).single(),
     supabase.from('paychecks').select('*').eq('user_id', user.id)
       .order('created_at', { ascending: false }).limit(100),
     supabase.from('allocations').select('*').eq('user_id', user.id)
       .order('created_at', { ascending: true }),
+    supabase.from('paychecks').select('created_at').eq('user_id', user.id)
+      .order('created_at', { ascending: true }).limit(1).maybeSingle(),
   ])
 
   // Filter to the current month client-side. Server-side ISO ranges can drop
@@ -127,24 +207,53 @@ async function fetchDashboardData(period: Period, periodStart: Date): Promise<Da
   return {
     expenses: expensesRes.data ?? [],
     chartExpenses: chartExpensesRes.data ?? [],
+    allExpenses: allExpensesRes.data ?? [],
     budget,
     paychecks: monthPaychecks,
     allocations: allocationsRes.data ?? [],
     latestPaycheckRecord: allPaychecks[0] ?? null,
+    firstPaycheckAt: firstPaycheckRes.data?.created_at ?? null,
+    rolloverStart: profileRow?.rollover_start ?? null,
   }
 }
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   // UI state
   const [period, setPeriod] = useState<Period>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [userName, setUserName] = useState('')
 
+  // Rollover start editor state
+  const [editingRollover, setEditingRollover] = useState(false)
+  const [rolloverInput, setRolloverInput] = useState('')
+
   // Modal state
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+
+  const saveRolloverStartMutation = useMutation({
+    mutationFn: async function (date: string) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+      const res = await supabase
+        .from('profiles')
+        .upsert({ id: user.id, rollover_start: date }, { onConflict: 'id' })
+      if (res.error) throw res.error
+    },
+    onSuccess: function () {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['paycheck'] })
+      setEditingRollover(false)
+    },
+  })
+
+  function openRolloverEditor() {
+    setRolloverInput(dashData?.rolloverStart ?? '')
+    setEditingRollover(true)
+  }
 
   useEffect(function () {
     async function loadUser() {
@@ -216,6 +325,16 @@ export default function Dashboard() {
   const weeklyBudget = (budget?.weekly_budget != null && budget.weekly_budget > 0)
     ? budget.weekly_budget
     : 0
+
+  // The fund is week-specific: navigating the period selector shows the fund
+  // as it stands entering that week. Month view uses today's week.
+  const { fund: leftoverFund, completedWeeks } = computeLeftoverFund(
+    weeklyBudget,
+    dashData?.allExpenses ?? [],
+    dashData?.firstPaycheckAt ?? null,
+    dashData?.rolloverStart ?? null,
+    period === 'week' ? periodRange.start : new Date(),
+  )
   const periodLimit = period === 'week' ? weeklyBudget : weeklyBudget * (daysInPeriod / 7)
   const remaining = periodLimit - periodTotal
   const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
@@ -361,18 +480,62 @@ export default function Dashboard() {
             </div>
 
             <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
-              <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1'>Allocated</p>
-              {allocations.length > 0 ? (
+              <div className='flex items-center justify-between mb-1'>
+                <p className='text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wide'>Leftover Spending</p>
+                {weeklyBudget > 0 && !editingRollover && (
+                  <button
+                    type='button'
+                    onClick={openRolloverEditor}
+                    title='Set the week the rollover starts counting from'
+                    className='text-[10px] font-semibold text-gray-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-colors whitespace-nowrap'
+                  >
+                    ✎ Edit Start Rollover
+                  </button>
+                )}
+              </div>
+              {editingRollover ? (
+                <div className='mt-1'>
+                  <input
+                    type='date'
+                    value={rolloverInput}
+                    onChange={function (e) { setRolloverInput(e.target.value) }}
+                    className='w-full rounded-lg border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] px-2 py-1.5 text-xs text-gray-800 dark:text-slate-200 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/40'
+                  />
+                  <div className='flex gap-2 mt-1.5'>
+                    <button
+                      type='button'
+                      onClick={function () { if (rolloverInput) saveRolloverStartMutation.mutate(rolloverInput) }}
+                      disabled={saveRolloverStartMutation.isPending || !rolloverInput}
+                      className='flex-1 py-1 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700 disabled:opacity-50 transition-colors'
+                    >
+                      {saveRolloverStartMutation.isPending ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      type='button'
+                      onClick={function () { setEditingRollover(false) }}
+                      className='flex-1 py-1 rounded-lg border border-gray-200 dark:border-[#1e3354] text-xs font-medium text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-[#152238] transition-colors'
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : weeklyBudget > 0 ? (
                 <>
-                  <p className='text-2xl font-bold text-gray-900 dark:text-slate-100'>{totalAllocated.toFixed(0)}%</p>
-                  <p className='text-xs text-gray-400 dark:text-slate-500 mt-1'>
-                    {allocations.length} goal{allocations.length !== 1 ? 's' : ''} set up
+                  <p className={`text-2xl font-bold ${leftoverFund < 0 ? 'text-red-500' : 'text-gray-900 dark:text-slate-100'}`}>
+                    {leftoverFund < 0 ? '-' : ''}${Math.abs(leftoverFund).toFixed(2)}
+                  </p>
+                  <p className={`text-xs mt-1 ${leftoverFund < 0 ? 'text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
+                    {leftoverFund < 0
+                      ? 'overdrawn — spending exceeded past rollovers'
+                      : completedWeeks > 0
+                        ? `rolled over from ${completedWeeks} week${completedWeeks !== 1 ? 's' : ''}`
+                        : 'starts rolling over next week'}
                   </p>
                 </>
               ) : (
                 <>
                   <p className='text-2xl font-bold text-gray-300 dark:text-slate-600'>—</p>
-                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Add allocations →</Link>
+                  <Link to='/paycheck' className='text-xs text-sky-600 hover:underline mt-1 block'>Set a weekly budget →</Link>
                 </>
               )}
             </div>
