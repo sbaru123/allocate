@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { PayFrequency, Allocation } from '@/types'
 import { supabase } from '@/lib/supabase'
-
-const SPENDING_LABEL = 'Spending'
+import saveWeeklyBudget, { SPENDING_LABEL, isSpendingLabel, getWeeksPerPeriod } from '@/lib/spendingBudget'
 
 type Mode = 'dollars' | 'percent'
 
@@ -12,12 +11,6 @@ type Props = {
   latestPaycheck: number
   payFrequency: PayFrequency
   allocations: Allocation[]
-}
-
-function getWeeksPerPeriod(freq: PayFrequency) {
-  if (freq === 'weekly') return 1
-  if (freq === 'monthly') return 4
-  return 2
 }
 
 export default function WeeklyBudgetCard({ weeklyBudget, latestPaycheck, payFrequency, allocations }: Props) {
@@ -29,7 +22,7 @@ export default function WeeklyBudgetCard({ weeklyBudget, latestPaycheck, payFreq
 
   const weeksPerPeriod = getWeeksPerPeriod(payFrequency)
   const spendingAllocation = allocations.find(function (a) {
-    return a.label.toLowerCase() === SPENDING_LABEL.toLowerCase()
+    return isSpendingLabel(a.label)
   })
   const otherAllocated = allocations.reduce(function (s, a) {
     return a.id === spendingAllocation?.id ? s : s + a.percentage
@@ -50,17 +43,7 @@ export default function WeeklyBudgetCard({ weeklyBudget, latestPaycheck, payFreq
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      // Profiles is the source of truth — Home falls back to it.
-      const profileRes = await supabase
-        .from('profiles')
-        .upsert({ id: user.id, weekly_budget: vars.weekly }, { onConflict: 'id' })
-      if (profileRes.error) throw profileRes.error
-
-      // Best-effort mirror to budgets; ignore failure if the column is missing.
-      const budgetRes = await supabase
-        .from('budgets')
-        .upsert({ user_id: user.id, weekly_budget: vars.weekly }, { onConflict: 'user_id' })
-      if (budgetRes.error) console.error('[budget] budgets upsert:', budgetRes.error)
+      await saveWeeklyBudget(user.id, vars.weekly)
 
       // Sync the matching Spending allocation bucket
       if (vars.pct != null) {
@@ -134,9 +117,9 @@ export default function WeeklyBudgetCard({ weeklyBudget, latestPaycheck, payFreq
   }
 
   return (
-    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-7 shadow-sm'>
       <div className='flex items-baseline justify-between mb-1'>
-        <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Weekly spending budget</h2>
+        <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Weekly spending budget</h2>
         {saved && <span className='text-xs text-emerald-500 font-medium'>Saved ✓</span>}
       </div>
       <p className='text-xs text-gray-400 dark:text-slate-500 mb-3'>

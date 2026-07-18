@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Allocation } from '@/types'
+import type { PayFrequency, Allocation } from '@/types'
 import { supabase } from '@/lib/supabase'
+import saveWeeklyBudget, { isSpendingLabel, weeklyFromPercent } from '@/lib/spendingBudget'
 
 const PALETTE = [
   { hex: '#38bdf8' },
@@ -17,9 +18,10 @@ const PALETTE = [
 type Props = {
   allocations: Allocation[]
   latestPaycheck: number
+  payFrequency: PayFrequency
 }
 
-export default function AllocationEditor({ allocations, latestPaycheck }: Props) {
+export default function AllocationEditor({ allocations, latestPaycheck, payFrequency }: Props) {
   const queryClient = useQueryClient()
 
   const [newLabel, setNewLabel] = useState('')
@@ -41,6 +43,11 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
         percentage: vars.percentage,
       })
       if (error) throw error
+
+      // Two-way sync: adding a Spending bucket sets the weekly budget
+      if (isSpendingLabel(vars.label)) {
+        await saveWeeklyBudget(user.id, weeklyFromPercent(vars.percentage, latestPaycheck, payFrequency))
+      }
     },
     onSuccess: function () {
       queryClient.invalidateQueries({ queryKey: ['paycheck'] })
@@ -52,10 +59,24 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
 
   const updateAllocationMutation = useMutation({
     mutationFn: async function (vars: { id: string; label: string; percentage: number }) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+      const previous = allocations.find(function (a) { return a.id === vars.id })
       const { error } = await supabase.from('allocations')
         .update({ label: vars.label, percentage: vars.percentage })
         .eq('id', vars.id)
       if (error) throw error
+
+      // Two-way sync: editing the Spending bucket updates the weekly budget.
+      // Renaming a bucket away from Spending clears it; renaming one to
+      // Spending sets it.
+      const wasSpending = previous ? isSpendingLabel(previous.label) : false
+      const nowSpending = isSpendingLabel(vars.label)
+      if (nowSpending) {
+        await saveWeeklyBudget(user.id, weeklyFromPercent(vars.percentage, latestPaycheck, payFrequency))
+      } else if (wasSpending) {
+        await saveWeeklyBudget(user.id, 0)
+      }
     },
     onSuccess: function () {
       queryClient.invalidateQueries({ queryKey: ['paycheck'] })
@@ -66,7 +87,15 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
 
   const deleteAllocationMutation = useMutation({
     mutationFn: async function (id: string) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+      const previous = allocations.find(function (a) { return a.id === id })
       await supabase.from('allocations').delete().eq('id', id)
+
+      // Two-way sync: deleting the Spending bucket clears the weekly budget
+      if (previous && isSpendingLabel(previous.label)) {
+        await saveWeeklyBudget(user.id, 0)
+      }
     },
     onSuccess: function () {
       queryClient.invalidateQueries({ queryKey: ['paycheck'] })
@@ -97,9 +126,9 @@ export default function AllocationEditor({ allocations, latestPaycheck }: Props)
   }
 
   return (
-    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-7 shadow-sm'>
       <div className='flex justify-between items-baseline mb-1'>
-        <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Paycheck allocation</h2>
+        <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Paycheck allocation</h2>
         {latestPaycheck > 0 && (
           <span className='text-xs text-gray-400 dark:text-slate-500'>Based on last paycheck: ${latestPaycheck.toFixed(2)}</span>
         )}
