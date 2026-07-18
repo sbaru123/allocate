@@ -27,9 +27,9 @@ export default function IncomeThisYearCard({ paychecks }: Props) {
   const maxMonthTotal = Math.max(...monthlyTotals.map(function (m) { return m.total }), 1)
 
   return (
-    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+    <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-7 shadow-sm'>
       <div className='flex items-baseline justify-between mb-1'>
-        <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Income this year</h2>
+        <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Income this year</h2>
         {ytd > 0 && (
           <span className='text-xs text-gray-400 dark:text-slate-500'>YTD: ${ytd.toLocaleString()}</span>
         )}

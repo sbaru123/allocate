@@ -105,9 +105,9 @@ export default function LogPaycheckCard({ paychecks }: Props) {
 
   return (
     <>
-      <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
+      <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-7 shadow-sm'>
         <div className='flex justify-between items-baseline mb-3'>
-          <h2 className='text-sm font-semibold text-gray-800 dark:text-slate-200'>Log a paycheck</h2>
+          <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Log a paycheck</h2>
           <span className='text-xs text-gray-400 dark:text-slate-500'>Total logged: ${totalIncome.toFixed(2)}</span>
         </div>
         <form onSubmit={handleAdd} className='space-y-3'>
