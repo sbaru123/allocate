@@ -69,6 +69,11 @@ alter table budgets
   add column if not exists pay_frequency text not null default 'biweekly'
     check (pay_frequency in ('weekly', 'biweekly', 'monthly'));
 
+-- Migration: add weekly_budget to budgets (run in Supabase SQL editor).
+-- The original table only had weekly_limit; onboarding and Home read/write weekly_budget.
+alter table budgets
+  add column if not exists weekly_budget numeric not null default 0;
+
 
 -- Profiles table (onboarding data)
 CREATE TABLE IF NOT EXISTS profiles (
