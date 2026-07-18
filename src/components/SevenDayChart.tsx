@@ -19,9 +19,11 @@ export default function SevenDayChart({ chartExpenses }: Props) {
   })
 
   const dayTotals = sevenDays.map(function (dateStr) {
+    const d = new Date(dateStr + 'T00:00:00')
     return {
       dateStr,
-      label: new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+      label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      dateLabel: d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
       total: chartExpenses
         .filter(function (e) { return localDateStr(new Date(e.created_at)) === dateStr })
         .reduce(function (sum, e) { return sum + e.amount }, 0),
@@ -43,7 +45,8 @@ export default function SevenDayChart({ chartExpenses }: Props) {
 
       <div className='flex items-end gap-1.5' style={{ height: '96px' }}>
         {dayTotals.map(function (day) {
-          const barHeight = day.total > 0 ? Math.max((day.total / maxDayTotal) * 72, 4) : 0
+          // Cap at 56px so the always-visible amount label fits above the tallest bar
+          const barHeight = day.total > 0 ? Math.max((day.total / maxDayTotal) * 56, 4) : 0
           const isHovered = day.dateStr === hoveredDate
           return (
             <div
@@ -53,8 +56,8 @@ export default function SevenDayChart({ chartExpenses }: Props) {
               onMouseLeave={function () { setHoveredDate(null) }}
             >
               <div className='w-full flex flex-col items-center justify-end' style={{ height: '72px' }}>
-                {isHovered && (
-                  <p className='text-[10px] font-semibold text-sky-700 dark:text-sky-400 mb-1 leading-none'>
+                {day.total > 0 && (
+                  <p className={`text-[10px] font-semibold mb-1 leading-none transition-colors duration-200 ${isHovered ? 'text-sky-700 dark:text-sky-400' : 'text-gray-500 dark:text-slate-400'}`}>
                     ${day.total.toFixed(2)}
                   </p>
                 )}
@@ -73,8 +76,9 @@ export default function SevenDayChart({ chartExpenses }: Props) {
                   />
                 )}
               </div>
-              <span className={`text-[10px] transition-colors duration-200 ${isHovered ? 'text-sky-600 dark:text-sky-400 font-semibold' : 'text-gray-400 dark:text-slate-500'}`}>
+              <span className={`text-[10px] leading-tight text-center transition-colors duration-200 ${isHovered ? 'text-sky-600 dark:text-sky-400 font-semibold' : 'text-gray-400 dark:text-slate-500'}`}>
                 {day.label}
+                <span className='block text-[9px] opacity-75'>{day.dateLabel}</span>
               </span>
             </div>
           )
