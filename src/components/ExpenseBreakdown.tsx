@@ -55,7 +55,7 @@ export default function Distribution({ items, periodName, total, budgetLimit, re
     <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-5 shadow-sm'>
       <div className='flex items-start justify-between gap-4 mb-5'>
         <div>
-          <p className='text-sm font-semibold text-gray-700 dark:text-slate-200'>Expense distribution</p>
+          <p className='text-sm font-semibold text-gray-700 dark:text-slate-200'>Expense Distribution</p>
           <p className='text-xs text-gray-400 dark:text-slate-500'>Where your {periodName} spending is going</p>
         </div>
         <p className='text-sm font-semibold text-gray-900 dark:text-slate-100'>${total.toFixed(2)}</p>
