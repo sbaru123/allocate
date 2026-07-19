@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Paycheck } from '@/types'
 import { supabase } from '@/lib/supabase'
+import { creditGoalsFromPaycheck, recreditGoalsForPaycheck } from '@/lib/goalSync'
 
 function todayStr() {
   const d = new Date()
@@ -36,13 +37,18 @@ export default function LogPaycheckCard({ paychecks }: Props) {
     mutationFn: async function (vars: { amount: number; note: string; date: string }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
-      const { error } = await supabase.from('paychecks').insert({
+      const { data: inserted, error } = await supabase.from('paychecks').insert({
         user_id: user.id,
         amount: vars.amount,
         note: vars.note,
         created_at: new Date(vars.date + 'T12:00:00').toISOString(),
-      })
+      }).select().single()
       if (error) throw error
+
+      // Auto-credit every %-linked goal from this paycheck
+      if (inserted) {
+        await creditGoalsFromPaycheck(user.id, inserted.id, vars.amount)
+      }
     },
     onSuccess: function () {
       queryClient.invalidateQueries({ queryKey: ['paycheck'] })
@@ -65,12 +71,17 @@ export default function LogPaycheckCard({ paychecks }: Props) {
 
   const updatePaycheckMutation = useMutation({
     mutationFn: async function (vars: { id: string; amount: number; note: string; date: string }) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
       const { error } = await supabase.from('paychecks').update({
         amount: vars.amount,
         note: vars.note,
         created_at: new Date(vars.date + 'T12:00:00').toISOString(),
       }).eq('id', vars.id)
       if (error) throw error
+
+      // Rebuild this paycheck's goal credits from the new amount
+      await recreditGoalsForPaycheck(user.id, vars.id, vars.amount)
     },
     onSuccess: function () {
       queryClient.invalidateQueries({ queryKey: ['paycheck'] })
