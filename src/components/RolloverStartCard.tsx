@@ -34,7 +34,7 @@ export default function RolloverStartCard({ rolloverStart }: Props) {
   return (
     <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-7 shadow-sm'>
       <div className='flex items-baseline justify-between mb-1'>
-        <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Rollover start week</h2>
+        <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Rollover Start Week</h2>
         {saved && <span className='text-xs text-emerald-500 font-medium'>Saved ✓</span>}
       </div>
       <p className='text-sm text-gray-400 dark:text-slate-500 mb-4'>

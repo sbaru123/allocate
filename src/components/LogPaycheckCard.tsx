@@ -118,7 +118,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
     <>
       <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-7 shadow-sm'>
         <div className='flex justify-between items-baseline mb-3'>
-          <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Log a paycheck</h2>
+          <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Log a Paycheck</h2>
           <span className='text-xs text-gray-400 dark:text-slate-500'>Total logged: ${totalIncome.toFixed(2)}</span>
         </div>
         <form onSubmit={handleAdd} className='space-y-3'>
@@ -197,7 +197,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
             className='bg-white dark:bg-[#0e1f38] w-full max-w-md rounded-2xl p-6'
             onClick={function (e) { e.stopPropagation() }}
           >
-            <h2 className='text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 text-center'>Edit paycheck</h2>
+            <h2 className='text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 text-center'>Edit Paycheck</h2>
             <form onSubmit={handleSaveEdit} className='space-y-4'>
               <div>
                 <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Amount ($)</label>
