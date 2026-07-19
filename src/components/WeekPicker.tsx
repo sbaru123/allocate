@@ -100,7 +100,7 @@ export default function WeekPicker({ anchorDate, onSelect, onClose }: Props) {
                 className={`flex rounded-lg cursor-pointer transition-colors ${
                   isSelected
                     ? 'bg-sky-100 dark:bg-sky-900/40'
-                    : 'hover:bg-sky-50 dark:hover:bg-[#152238]'
+                    : 'hover:bg-sky-100/70 dark:hover:bg-sky-900/25'
                 }`}
               >
                 {days.map(function (day) {
