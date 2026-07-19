@@ -1,13 +1,14 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import type { PayFrequency, Paycheck, Allocation } from '@/types'
+import type { PayFrequency, Paycheck, Allocation, Goal, GoalContribution } from '@/types'
 import Sidebar from '@/components/Sidebar'
 import PayFrequencyCard from '@/components/PayFrequencyCard'
 import LogPaycheckCard from '@/components/LogPaycheckCard'
 import IncomeThisYearCard from '@/components/IncomeThisYearCard'
 import WeeklyBudgetCard from '@/components/WeeklyBudgetCard'
 import RolloverStartCard from '@/components/RolloverStartCard'
+import GoalsCard from '@/components/GoalsCard'
 import AllocationEditor from '@/components/AllocationEditor'
 import ProjectedFundsCard from '@/components/ProjectedFundsCard'
 import { supabase } from '@/lib/supabase'
@@ -20,17 +21,21 @@ type PaycheckData = {
   projectionEnd: string | null
   paychecks: Paycheck[]
   allocations: Allocation[]
+  goals: Goal[]
+  goalContributions: GoalContribution[]
 }
 
 async function fetchPaycheckData(): Promise<PaycheckData> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const [budgetRes, profileRes, paychecksRes, allocationsRes] = await Promise.all([
+  const [budgetRes, profileRes, paychecksRes, allocationsRes, goalsRes, goalContribsRes] = await Promise.all([
     supabase.from('budgets').select('pay_frequency, weekly_budget').eq('user_id', user.id).single(),
     supabase.from('profiles').select('pay_frequency, weekly_budget, rollover_start, projection_start, projection_end').eq('id', user.id).single(),
     supabase.from('paychecks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('allocations').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+    supabase.from('goals').select('*').eq('user_id', user.id).order('target_date', { ascending: true }),
+    supabase.from('goal_contributions').select('*').eq('user_id', user.id),
   ])
 
   return {
@@ -41,6 +46,8 @@ async function fetchPaycheckData(): Promise<PaycheckData> {
     projectionEnd: profileRes.data?.projection_end ?? null,
     paychecks: paychecksRes.data ?? [],
     allocations: allocationsRes.data ?? [],
+    goals: goalsRes.data ?? [],
+    goalContributions: goalContribsRes.data ?? [],
   }
 }
 
@@ -66,6 +73,8 @@ export default function Paycheck() {
   const rolloverStart = data?.rolloverStart ?? null
   const projectionStart = data?.projectionStart ?? null
   const projectionEnd = data?.projectionEnd ?? null
+  const goals = data?.goals ?? []
+  const goalContributions = data?.goalContributions ?? []
   const paychecks = data?.paychecks ?? []
   const allocations = data?.allocations ?? []
   const latestPaycheck = paychecks[0]?.amount ?? 0
@@ -123,6 +132,13 @@ export default function Paycheck() {
                 allocations={allocations}
               />
               <RolloverStartCard rolloverStart={rolloverStart} />
+              <GoalsCard
+                goals={goals}
+                contributions={goalContributions}
+                allocations={allocations}
+                latestPaycheck={latestPaycheck}
+                payFrequency={payFrequency}
+              />
             </div>
 
           </div>
