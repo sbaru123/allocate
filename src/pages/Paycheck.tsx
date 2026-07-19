@@ -95,7 +95,7 @@ export default function Paycheck() {
 
             {/* Column 1 — Income */}
             <div className='space-y-5'>
-              <p className='text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500'>Income</p>
+              <p className='text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-slate-200'>Income</p>
               <PayFrequencyCard
                 payFrequency={payFrequency}
                 latestPaycheck={latestPaycheck}
@@ -107,7 +107,7 @@ export default function Paycheck() {
 
             {/* Column 2 — Allocation */}
             <div className='space-y-5'>
-              <p className='text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500'>Allocation</p>
+              <p className='text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-slate-200'>Allocation</p>
               <AllocationEditor
                 allocations={allocations}
                 latestPaycheck={latestPaycheck}
@@ -124,7 +124,7 @@ export default function Paycheck() {
 
             {/* Column 3 — Budget */}
             <div className='space-y-5'>
-              <p className='text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500'>Budget</p>
+              <p className='text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-slate-200'>Budget</p>
               <WeeklyBudgetCard
                 weeklyBudget={weeklyBudget}
                 latestPaycheck={latestPaycheck}
