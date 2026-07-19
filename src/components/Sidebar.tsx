@@ -36,7 +36,7 @@ export default function Sidebar() {
                   return `whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-slate-400 dark:hover:bg-[#0e1f38] dark:hover:text-slate-100'
+                      : 'text-gray-500 hover:bg-sky-100/70 hover:text-gray-800 dark:text-slate-400 dark:hover:bg-sky-900/25 dark:hover:text-slate-100'
                   }`
                 }}
               >
