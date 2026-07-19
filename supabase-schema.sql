@@ -88,6 +88,48 @@ alter table profiles
   add column if not exists projection_end date;
 
 
+-- Goals: "save at least $X for Y by date Z" (run in Supabase SQL editor).
+-- allocation_pct auto-contributes that % of every paycheck logged after the
+-- goal was created; goal_contributions holds manual bonuses/stipends.
+create table if not exists goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  target_amount numeric(10, 2) not null,
+  target_date date not null,
+  allocation_pct numeric(5, 2) not null default 0 check (allocation_pct >= 0 and allocation_pct <= 100),
+  created_at timestamptz default now()
+);
+
+alter table goals enable row level security;
+
+create policy "Users can manage their own goals"
+  on goals for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create table if not exists goal_contributions (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid references goals(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  amount numeric(10, 2) not null,
+  note text default '',
+  created_at timestamptz default now()
+);
+
+-- Migration: tie paycheck-driven goal credits to their paycheck so edits
+-- re-credit correctly and deletes cascade.
+alter table goal_contributions
+  add column if not exists paycheck_id uuid references paychecks(id) on delete cascade;
+
+alter table goal_contributions enable row level security;
+
+create policy "Users can manage their own goal contributions"
+  on goal_contributions for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+
 -- Profiles table (onboarding data)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
