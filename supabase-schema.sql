@@ -210,8 +210,3 @@ CREATE TABLE IF NOT EXISTS expenses (
   note TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
-ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can manage own expenses" ON expenses
-  FOR ALL USING (auth.uid() = user_id);
