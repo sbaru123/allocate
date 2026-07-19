@@ -195,11 +195,6 @@ CREATE TABLE IF NOT EXISTS paychecks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE paychecks ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can manage own paychecks" ON paychecks
-  FOR ALL USING (auth.uid() = user_id);
-
 
 -- Expenses table
 CREATE TABLE IF NOT EXISTS expenses (
