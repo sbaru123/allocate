@@ -22,3 +22,20 @@ export type Paycheck = {
   note: string
   created_at: string
 }
+
+export type Goal = {
+  id: string
+  name: string
+  target_amount: number
+  target_date: string
+  allocation_pct: number
+  created_at: string
+}
+
+export type GoalContribution = {
+  id: string
+  goal_id: string
+  amount: number
+  note: string
+  created_at: string
+}
