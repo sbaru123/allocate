@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { PayFrequency, Allocation } from '@/types'
 import { supabase } from '@/lib/supabase'
 import saveWeeklyBudget, { isSpendingLabel, weeklyFromPercent } from '@/lib/spendingBudget'
+import syncGoalWithAllocationLabel from '@/lib/goalSync'
 
 const PALETTE = [
   { hex: '#38bdf8' },
@@ -77,6 +78,14 @@ export default function AllocationEditor({ allocations, latestPaycheck, payFrequ
       } else if (wasSpending) {
         await saveWeeklyBudget(user.id, 0)
       }
+
+      // Goal sync: a goal-linked bucket's percentage drives the goal's
+      // paycheck %. Renaming the bucket away from the goal unlinks it
+      // (removing only the allocation-driven amount).
+      if (previous && previous.label.trim().toLowerCase() !== vars.label.trim().toLowerCase()) {
+        await syncGoalWithAllocationLabel(user.id, previous.label, 0)
+      }
+      await syncGoalWithAllocationLabel(user.id, vars.label, vars.percentage)
     },
     onSuccess: function () {
       queryClient.invalidateQueries({ queryKey: ['paycheck'] })
@@ -95,6 +104,12 @@ export default function AllocationEditor({ allocations, latestPaycheck, payFrequ
       // Two-way sync: deleting the Spending bucket clears the weekly budget
       if (previous && isSpendingLabel(previous.label)) {
         await saveWeeklyBudget(user.id, 0)
+      }
+
+      // Goal sync: deleting a goal's bucket removes only the allocation-driven
+      // amount — the goal itself and manual contributions stay.
+      if (previous) {
+        await syncGoalWithAllocationLabel(user.id, previous.label, 0)
       }
     },
     onSuccess: function () {
