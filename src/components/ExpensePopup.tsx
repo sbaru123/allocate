@@ -19,17 +19,20 @@ type Props = {
   open: boolean
   onClose: () => void
   expense?: Expense | null
+  defaultDate?: string | null
 }
 
-export default function ExpenseModal({ open, onClose, expense }: Props) {
+export default function ExpenseModal({ open, onClose, expense, defaultDate }: Props) {
   const queryClient = useQueryClient()
   const isEdit = !!expense
 
   const [amount, setAmount] = useState(expense ? String(expense.amount) : '')
   const [category, setCategory] = useState<Category>(expense?.category ?? 'food')
   const [note, setNote] = useState(expense?.note ?? '')
+  // New expenses default to the date of the last logged expense (handy when
+  // catching up on several days at once), falling back to today.
   const [date, setDate] = useState(
-    expense ? localDateStr(new Date(expense.created_at)) : localDateStr(new Date())
+    expense ? localDateStr(new Date(expense.created_at)) : (defaultDate ?? localDateStr(new Date()))
   )
 
   const addMutation = useMutation({

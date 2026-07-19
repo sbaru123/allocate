@@ -326,6 +326,12 @@ export default function Dashboard() {
     ? budget.weekly_budget
     : 0
 
+  // Default date for new expenses: the date of the last logged expense
+  const allExpensesList = dashData?.allExpenses ?? []
+  const lastExpenseDate = allExpensesList.length > 0
+    ? localDateStr(new Date(allExpensesList[allExpensesList.length - 1].created_at))
+    : null
+
   // The fund is week-specific: navigating the period selector shows the fund
   // as it stands entering that week. Month view uses today's week.
   const { fund: leftoverFund, completedWeeks } = computeLeftoverFund(
@@ -601,6 +607,7 @@ export default function Dashboard() {
         open={showForm || !!editingExpense}
         onClose={closeModal}
         expense={editingExpense}
+        defaultDate={lastExpenseDate}
       />
     </div>
   )
