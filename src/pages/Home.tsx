@@ -7,6 +7,7 @@ import SevenDayChart from '@/components/SevenDayChart'
 import PaycheckAllocation from '@/components/PaycheckAllocation'
 import RecentActivity from '@/components/RecentActivity'
 import ExpensePopup from '@/components/ExpensePopup'
+import WeekPicker from '@/components/WeekPicker'
 import Sidebar from '@/components/Sidebar'
 import { supabase } from '@/lib/supabase'
 
@@ -230,6 +231,9 @@ export default function Dashboard() {
   const [editingRollover, setEditingRollover] = useState(false)
   const [rolloverInput, setRolloverInput] = useState('')
 
+  // Week picker popup
+  const [showWeekPicker, setShowWeekPicker] = useState(false)
+
   // Modal state
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
@@ -414,13 +418,31 @@ export default function Dashboard() {
             >
               ‹
             </button>
-            <button
-              type='button'
-              onClick={goToCurrentPeriod}
-              className='text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-colors px-2 py-0.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/20'
-            >
-              {periodLabel}
-            </button>
+            <div className='relative'>
+              <button
+                type='button'
+                onClick={function () {
+                  if (period === 'week') {
+                    setShowWeekPicker(function (prev) { return !prev })
+                  } else {
+                    goToCurrentPeriod()
+                  }
+                }}
+                className='text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-colors px-2 py-0.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/20'
+              >
+                {periodLabel}
+              </button>
+              {showWeekPicker && period === 'week' && (
+                <WeekPicker
+                  anchorDate={anchorDate}
+                  onClose={function () { setShowWeekPicker(false) }}
+                  onSelect={function (weekStart) {
+                    setAnchorDate(weekStart)
+                    setShowWeekPicker(false)
+                  }}
+                />
+              )}
+            </div>
             <button
               type='button'
               onClick={() => movePeriod(1)}
