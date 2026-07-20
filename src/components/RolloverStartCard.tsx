@@ -45,7 +45,7 @@ export default function RolloverStartCard({ rolloverStart }: Props) {
           type='date'
           value={startDate}
           onChange={function (e) { setStartDate(e.target.value) }}
-          className='flex-1 rounded-lg border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] px-3 py-2 text-sm text-gray-800 dark:text-slate-200 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/40'
+          className='min-w-0 flex-1 rounded-lg border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] px-3 py-2 text-sm text-gray-800 dark:text-slate-200 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/40'
         />
         <button
           type='button'

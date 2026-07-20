@@ -149,7 +149,7 @@ export default function WeeklyBudgetCard({ weeklyBudget, latestPaycheck, payFreq
       </div>
 
       <form onSubmit={handleSubmit} className='flex gap-2'>
-        <div className='relative flex-1'>
+        <div className='relative flex-1 min-w-0'>
           <span className='absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-slate-500'>
             {mode === 'dollars' ? '$' : '%'}
           </span>
