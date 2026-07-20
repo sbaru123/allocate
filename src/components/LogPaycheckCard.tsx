@@ -127,7 +127,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
               type='text'
               value={note}
               onChange={function (e) { setNote(e.target.value) }}
-              className='flex-1 border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
+              className='min-w-0 flex-1 border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
               placeholder='Note (e.g. Week 1)'
             />
             <input
@@ -137,7 +137,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
               required
               value={amount}
               onChange={function (e) { setAmount(e.target.value) }}
-              className='flex-1 border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
+              className='min-w-0 flex-1 border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
               placeholder='Amount ($)'
             />
           </div>
@@ -237,7 +237,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
                 <button
                   type='button'
                   onClick={function () { setEditingPaycheck(null) }}
-                  className='flex-1 border border-gray-300 dark:border-[#1e3354] text-gray-600 dark:text-slate-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#152238] transition-colors'
+                  className='min-w-0 flex-1 border border-gray-300 dark:border-[#1e3354] text-gray-600 dark:text-slate-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#152238] transition-colors'
                 >
                   Cancel
                 </button>
