@@ -136,7 +136,7 @@ export default function ProjectedFundsCard({ allocations, paychecks, payFrequenc
       {editing && (
         <div className='border border-gray-100 dark:border-[#1e3354] rounded-xl p-3 mb-4 space-y-2'>
           <div className='flex gap-2'>
-            <div className='flex-1'>
+            <div className='flex-1 min-w-0'>
               <label className='block text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-1'>First paycheck</label>
               <input
                 type='date'
@@ -145,7 +145,7 @@ export default function ProjectedFundsCard({ allocations, paychecks, payFrequenc
                 className='w-full rounded-lg border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] px-2 py-1.5 text-sm text-gray-800 dark:text-slate-200 focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/40'
               />
             </div>
-            <div className='flex-1'>
+            <div className='flex-1 min-w-0'>
               <label className='block text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-1'>Last paycheck</label>
               <input
                 type='date'

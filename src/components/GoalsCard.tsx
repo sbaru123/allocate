@@ -308,7 +308,7 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
             className={inputClass}
           />
           <div className='flex gap-2'>
-            <div className='relative flex-1'>
+            <div className='relative flex-1 min-w-0'>
               <span className='absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-slate-500'>$</span>
               <input
                 type='number'
@@ -326,7 +326,7 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
               required
               value={date}
               onChange={function (e) { setDate(e.target.value) }}
-              className={`${inputClass} flex-1`}
+              className={`${inputClass} flex-1 min-w-0`}
             />
           </div>
           <div className='relative'>
@@ -395,7 +395,7 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
                     className={inputClass}
                   />
                   <div className='flex gap-2'>
-                    <div className='relative flex-1'>
+                    <div className='relative flex-1 min-w-0'>
                       <span className='absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-slate-500'>$</span>
                       <input
                         type='number'
@@ -412,7 +412,7 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
                       required
                       value={editDate}
                       onChange={function (e) { setEditDate(e.target.value) }}
-                      className={`${inputClass} flex-1`}
+                      className={`${inputClass} flex-1 min-w-0`}
                     />
                   </div>
                   <div className='relative'>

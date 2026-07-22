@@ -187,7 +187,7 @@ export default function AllocationEditor({ allocations, latestPaycheck, payFrequ
                   <input
                     value={editLabel}
                     onChange={function (e) { setEditLabel(e.target.value) }}
-                    className='flex-1 border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
+                    className='min-w-0 flex-1 border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
                     placeholder='Label'
                   />
                   <div className='relative w-24 flex-shrink-0'>
@@ -257,7 +257,7 @@ export default function AllocationEditor({ allocations, latestPaycheck, payFrequ
           required
           value={newLabel}
           onChange={function (e) { setNewLabel(e.target.value) }}
-          className='flex-1 border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
+          className='min-w-0 flex-1 border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder:text-gray-400 dark:placeholder:text-slate-600'
           placeholder='e.g. Roth IRA'
         />
         <div className='relative w-20 flex-shrink-0'>
