@@ -31,6 +31,32 @@ type Paycheck = {
   amount: number
   note: string
   created_at: string
+  period_start?: string | null
+  period_weeks?: number | null
+}
+
+function weeksPerPeriodFor(freq: PayFrequency | undefined) {
+  if (freq === 'weekly') return 1
+  if (freq === 'monthly') return 4
+  return 2
+}
+
+// The paycheck whose coverage window contains the given week. When windows
+// overlap, the one that starts latest (most recent) wins.
+function paycheckForWeek(weekStartMs: number, paychecks: Paycheck[], defaultWeeks: number): Paycheck | null {
+  let best: Paycheck | null = null
+  let bestStart = -Infinity
+  for (const p of paychecks) {
+    const anchor = p.period_start ? new Date(`${p.period_start}T00:00:00`) : new Date(p.created_at)
+    const ps = getWeekStart(anchor).getTime()
+    const weeks = p.period_weeks ?? defaultWeeks
+    const pe = ps + weeks * 7 * 86400000
+    if (weekStartMs >= ps && weekStartMs < pe && ps > bestStart) {
+      best = p
+      bestStart = ps
+    }
+  }
+  return best
 }
 
 type Period = 'week' | 'month'
@@ -46,6 +72,7 @@ type DashboardData = {
   allExpenses: SlimExpense[]
   budget: Budget | null
   paychecks: Paycheck[]
+  coveragePaychecks: Paycheck[]
   allocations: Allocation[]
   latestPaycheckRecord: Paycheck | null
   firstPaycheckAt: string | null
@@ -106,13 +133,14 @@ function getWeekStart(date: Date) {
  * week 2 → week 3 shows $60, and so on.
  */
 function computeLeftoverFund(
-  weeklyBudget: number,
+  weekBudgetOf: (weekStartMs: number) => number,
+  hasBudget: boolean,
   allExpenses: SlimExpense[],
   firstPaycheckAt: string | null,
   rolloverStart: string | null,
   asOf: Date,
 ) {
-  if (weeklyBudget <= 0) return { fund: 0, completedWeeks: 0 }
+  if (!hasBudget) return { fund: 0, completedWeeks: 0 }
 
   let startWeek: Date
   if (rolloverStart) {
@@ -143,14 +171,14 @@ function computeLeftoverFund(
   let completedWeeks = 0
   const cursor = new Date(startWeek)
   while (cursor < currentWeekStart) {
-    fund += weeklyBudget - (spentByWeek.get(cursor.getTime()) ?? 0)
+    fund += weekBudgetOf(cursor.getTime()) - (spentByWeek.get(cursor.getTime()) ?? 0)
     completedWeeks += 1
     cursor.setDate(cursor.getDate() + 7)
   }
 
-  // Current week only taps the fund once the weekly budget is exhausted
+  // Current week only taps the fund once its own budget is exhausted
   const spentThisWeek = spentByWeek.get(currentWeekStart.getTime()) ?? 0
-  fund -= Math.max(0, spentThisWeek - weeklyBudget)
+  fund -= Math.max(0, spentThisWeek - weekBudgetOf(currentWeekStart.getTime()))
 
   // Can go negative — overspending beyond what past weeks saved up
   return { fund, completedWeeks }
@@ -211,6 +239,7 @@ async function fetchDashboardData(period: Period, periodStart: Date): Promise<Da
     allExpenses: allExpensesRes.data ?? [],
     budget,
     paychecks: monthPaychecks,
+    coveragePaychecks: allPaychecks,
     allocations: allocationsRes.data ?? [],
     latestPaycheckRecord: allPaychecks[0] ?? null,
     firstPaycheckAt: firstPaycheckRes.data?.created_at ?? null,
@@ -330,6 +359,22 @@ export default function Dashboard() {
     ? budget.weekly_budget
     : 0
 
+  // Per-week budget: each week is funded by the paycheck that covers it, scaled
+  // to the same spending fraction the global budget implies. This keeps past
+  // weeks anchored to their own paycheck instead of the latest one.
+  const coveragePaychecks = dashData?.coveragePaychecks ?? []
+  const defaultWeeks = weeksPerPeriodFor(budget?.pay_frequency)
+  const spendingRate = (weeklyBudget > 0 && latestPaycheckAmt > 0)
+    ? weeklyBudget / latestPaycheckAmt
+    : 0
+
+  function weekBudgetOf(weekStartMs: number) {
+    if (weeklyBudget <= 0) return 0
+    const covering = paycheckForWeek(weekStartMs, coveragePaychecks, defaultWeeks)
+    if (covering && spendingRate > 0) return covering.amount * spendingRate
+    return weeklyBudget
+  }
+
   // Default date for new expenses: the date of the last logged expense
   const allExpensesList = dashData?.allExpenses ?? []
   const lastExpenseDate = allExpensesList.length > 0
@@ -339,13 +384,28 @@ export default function Dashboard() {
   // The fund is week-specific: navigating the period selector shows the fund
   // as it stands entering that week. Month view uses today's week.
   const { fund: leftoverFund, completedWeeks } = computeLeftoverFund(
-    weeklyBudget,
+    weekBudgetOf,
+    weeklyBudget > 0,
     dashData?.allExpenses ?? [],
     dashData?.firstPaycheckAt ?? null,
     dashData?.rolloverStart ?? null,
     period === 'week' ? periodRange.start : new Date(),
   )
-  const periodLimit = period === 'week' ? weeklyBudget : weeklyBudget * (daysInPeriod / 7)
+
+  // Period spending limit: for a week, the covering paycheck's budget; for a
+  // month, the sum of each covered week's budget.
+  let periodLimit: number
+  if (period === 'week') {
+    periodLimit = weekBudgetOf(getWeekStart(periodRange.start).getTime())
+  } else {
+    let sum = 0
+    const wk = getWeekStart(periodRange.start)
+    while (wk < periodRange.end) {
+      sum += weekBudgetOf(wk.getTime())
+      wk.setDate(wk.getDate() + 7)
+    }
+    periodLimit = sum
+  }
   const remaining = periodLimit - periodTotal
   const progress = periodLimit > 0 ? Math.min((periodTotal / periodLimit) * 100, 100) : 0
 
