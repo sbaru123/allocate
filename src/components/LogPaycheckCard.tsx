@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Paycheck } from '@/types'
+import type { Paycheck, PayFrequency } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { creditGoalsFromPaycheck, recreditGoalsForPaycheck } from '@/lib/goalSync'
 
@@ -13,28 +13,39 @@ function maxDateStr() {
   return todayStr()
 }
 
-type Props = {
-  paychecks: Paycheck[]
+function defaultWeeksFor(freq: PayFrequency) {
+  if (freq === 'weekly') return 1
+  if (freq === 'monthly') return 4
+  return 2
 }
 
-export default function LogPaycheckCard({ paychecks }: Props) {
+type Props = {
+  paychecks: Paycheck[]
+  payFrequency: PayFrequency
+}
+
+export default function LogPaycheckCard({ paychecks, payFrequency }: Props) {
   const queryClient = useQueryClient()
+
+  const defaultWeeks = defaultWeeksFor(payFrequency)
 
   // Add form
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [date, setDate] = useState(todayStr)
+  const [coverWeeks, setCoverWeeks] = useState(String(defaultWeeks))
 
   // Edit modal
   const [editingPaycheck, setEditingPaycheck] = useState<Paycheck | null>(null)
   const [editAmount, setEditAmount] = useState('')
   const [editNote, setEditNote] = useState('')
   const [editDate, setEditDate] = useState('')
+  const [editWeeks, setEditWeeks] = useState('')
 
   const totalIncome = paychecks.reduce(function (s, p) { return s + p.amount }, 0)
 
   const addPaycheckMutation = useMutation({
-    mutationFn: async function (vars: { amount: number; note: string; date: string }) {
+    mutationFn: async function (vars: { amount: number; note: string; date: string; weeks: number }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
       const { data: inserted, error } = await supabase.from('paychecks').insert({
@@ -42,6 +53,8 @@ export default function LogPaycheckCard({ paychecks }: Props) {
         amount: vars.amount,
         note: vars.note,
         created_at: new Date(vars.date + 'T12:00:00').toISOString(),
+        period_start: vars.date,
+        period_weeks: vars.weeks,
       }).select().single()
       if (error) throw error
 
@@ -56,6 +69,7 @@ export default function LogPaycheckCard({ paychecks }: Props) {
       setAmount('')
       setNote('')
       setDate(todayStr())
+      setCoverWeeks(String(defaultWeeks))
     },
   })
 
@@ -70,13 +84,15 @@ export default function LogPaycheckCard({ paychecks }: Props) {
   })
 
   const updatePaycheckMutation = useMutation({
-    mutationFn: async function (vars: { id: string; amount: number; note: string; date: string }) {
+    mutationFn: async function (vars: { id: string; amount: number; note: string; date: string; weeks: number }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
       const { error } = await supabase.from('paychecks').update({
         amount: vars.amount,
         note: vars.note,
         created_at: new Date(vars.date + 'T12:00:00').toISOString(),
+        period_start: vars.date,
+        period_weeks: vars.weeks,
       }).eq('id', vars.id)
       if (error) throw error
 
@@ -92,7 +108,8 @@ export default function LogPaycheckCard({ paychecks }: Props) {
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    addPaycheckMutation.mutate({ amount: parseFloat(amount), note, date })
+    const weeks = Math.max(1, Math.round(parseFloat(coverWeeks) || defaultWeeks))
+    addPaycheckMutation.mutate({ amount: parseFloat(amount), note, date, weeks })
   }
 
   function startEdit(p: Paycheck) {
@@ -101,16 +118,19 @@ export default function LogPaycheckCard({ paychecks }: Props) {
     setEditNote(p.note ?? '')
     const d = new Date(p.created_at)
     setEditDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+    setEditWeeks(String(p.period_weeks ?? defaultWeeks))
   }
 
   function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault()
     if (!editingPaycheck) return
+    const weeks = Math.max(1, Math.round(parseFloat(editWeeks) || defaultWeeks))
     updatePaycheckMutation.mutate({
       id: editingPaycheck.id,
       amount: parseFloat(editAmount),
       note: editNote,
       date: editDate,
+      weeks,
     })
   }
 
@@ -149,6 +169,18 @@ export default function LogPaycheckCard({ paychecks }: Props) {
             onChange={function (e) { setDate(e.target.value) }}
             className='w-full border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
           />
+          <div className='flex items-center gap-2'>
+            <label className='text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap'>Covers</label>
+            <input
+              type='number'
+              min='1'
+              step='1'
+              value={coverWeeks}
+              onChange={function (e) { setCoverWeeks(e.target.value) }}
+              className='w-16 min-w-0 border border-gray-300 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+            />
+            <span className='text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap'>week{coverWeeks === '1' ? '' : 's'} from this date</span>
+          </div>
           <button
             type='submit'
             disabled={addPaycheckMutation.isPending}
@@ -230,6 +262,18 @@ export default function LogPaycheckCard({ paychecks }: Props) {
                   value={editDate}
                   max={maxDateStr()}
                   onChange={function (e) { setEditDate(e.target.value) }}
+                  className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'>Covers (weeks from date)</label>
+                <input
+                  type='number'
+                  min='1'
+                  step='1'
+                  required
+                  value={editWeeks}
+                  onChange={function (e) { setEditWeeks(e.target.value) }}
                   className='w-full border border-gray-200 dark:border-[#1e3354] bg-white dark:bg-[#0a1628] text-gray-900 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400'
                 />
               </div>
