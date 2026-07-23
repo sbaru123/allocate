@@ -101,7 +101,7 @@ export default function Paycheck() {
                 latestPaycheck={latestPaycheck}
                 allocations={allocations}
               />
-              <LogPaycheckCard paychecks={paychecks} />
+              <LogPaycheckCard paychecks={paychecks} payFrequency={payFrequency} />
               <IncomeThisYearCard paychecks={paychecks} />
             </div>
 

@@ -106,11 +106,6 @@ function formatPeriodLabel(period: Period, start: Date, end: Date) {
   return `${s} – ${e}`
 }
 
-function getDaysInPeriod(period: Period, start: Date) {
-  if (period === 'week') return 7
-  return new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()
-}
-
 function localDateStr(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
@@ -339,7 +334,6 @@ export default function Dashboard() {
 
   const periodLabel = formatPeriodLabel(period, periodRange.start, periodRange.end)
   const periodName = period === 'week' ? 'week' : 'month'
-  const daysInPeriod = getDaysInPeriod(period, periodRange.start)
 
   const periodTotal = expenses.reduce(function (sum, e) { return sum + e.amount }, 0)
   const byCategory = CATEGORIES.map(function (cat) {
