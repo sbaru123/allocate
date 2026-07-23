@@ -117,6 +117,12 @@ create table if not exists goal_contributions (
   created_at timestamptz default now()
 );
 
+-- Migration: give each paycheck a coverage window so Safe to Spend and the
+-- rollover fund use the paycheck that covers each week — not just the latest.
+-- period_weeks defaults by pay frequency (weekly 1, biweekly 2, monthly 4).
+alter table paychecks add column if not exists period_start date;
+alter table paychecks add column if not exists period_weeks integer;
+
 -- Migration: tie paycheck-driven goal credits to their paycheck so edits
 -- re-credit correctly and deletes cascade.
 alter table goal_contributions
