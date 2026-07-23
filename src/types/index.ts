@@ -21,6 +21,9 @@ export type Paycheck = {
   amount: number
   note: string
   created_at: string
+  // Coverage window: which weeks this paycheck's budget applies to.
+  period_start?: string | null
+  period_weeks?: number | null
 }
 
 export type Goal = {
