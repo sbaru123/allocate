@@ -131,7 +131,6 @@ export default function Paycheck() {
                 payFrequency={payFrequency}
                 allocations={allocations}
               />
-              <RolloverStartCard rolloverStart={rolloverStart} />
               <GoalsCard
                 goals={goals}
                 contributions={goalContributions}
@@ -139,6 +138,7 @@ export default function Paycheck() {
                 latestPaycheck={latestPaycheck}
                 payFrequency={payFrequency}
               />
+              <RolloverStartCard rolloverStart={rolloverStart} />
             </div>
 
           </div>
