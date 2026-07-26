@@ -152,7 +152,7 @@ export default function LogPaycheckCard({ paychecks, payFrequency }: Props) {
             />
             <input
               type='number'
-              step='1'
+              step='0.01'
               min='0'
               required
               value={amount}
