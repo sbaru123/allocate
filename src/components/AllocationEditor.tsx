@@ -142,10 +142,10 @@ export default function AllocationEditor({ allocations, latestPaycheck, payFrequ
 
   return (
     <div className='bg-white dark:bg-[#0e1f38] rounded-2xl border border-gray-200 dark:border-[#1e3354] p-7 shadow-sm'>
-      <div className='flex justify-between items-baseline mb-1'>
-        <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200'>Paycheck Allocation</h2>
+      <div className='flex justify-between items-baseline gap-2 mb-1'>
+        <h2 className='text-base font-semibold text-gray-800 dark:text-slate-200 whitespace-nowrap'>Paycheck Allocation</h2>
         {latestPaycheck > 0 && (
-          <span className='text-xs text-gray-400 dark:text-slate-500'>Based on last paycheck: ${latestPaycheck.toFixed(2)}</span>
+          <span className='text-xs text-gray-400 dark:text-slate-500 text-right truncate'>Based on last paycheck: ${latestPaycheck.toFixed(2)}</span>
         )}
       </div>
       <p className='text-xs text-gray-400 dark:text-slate-500 mb-4'>Distribute your paycheck into goals. Runs every paycheck.</p>
