@@ -31,19 +31,31 @@ function readLocalSnapshot(uid: string): OnboardingSnapshot | null {
  * Returns true when onboarding is complete (caller can route to /home).
  */
 export default async function ensureUserData(uid: string): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser()
-  console.log('[allocate-debug] logged in as:', user?.email, '| uid:', uid, '| metadata:', user?.user_metadata)
-
-  const { data: profile, error: profileErr } = await supabase
+  const { data: profile } = await supabase
     .from('profiles')
     .select('onboarding_completed, pay_frequency, paycheck_amount, buckets, weekly_budget')
     .eq('id', uid)
     .single()
-  console.log('[allocate-debug] profile row:', profile, '| error:', profileErr?.message ?? 'none')
 
   const snapshot = readLocalSnapshot(uid)
-  console.log('[allocate-debug] localStorage snapshot:', snapshot)
-  const completed = profile?.onboarding_completed === true || snapshot?.onboarding_completed === true
+  let completed = profile?.onboarding_completed === true || snapshot?.onboarding_completed === true
+
+  // Catch-all: an existing account that already has data but whose
+  // onboarding_completed flag is missing or false (interrupted final write,
+  // a profile row that predates the column, or localStorage cleared on a new
+  // browser) should NOT be sent back through onboarding. If the user already
+  // has allocations or paychecks, treat them as onboarded and repair the flag.
+  if (!completed) {
+    const [{ count: allocCount }, { count: payCount }] = await Promise.all([
+      supabase.from('allocations').select('id', { count: 'exact', head: true }).eq('user_id', uid),
+      supabase.from('paychecks').select('id', { count: 'exact', head: true }).eq('user_id', uid),
+    ])
+    if ((allocCount ?? 0) > 0 || (payCount ?? 0) > 0) {
+      completed = true
+      await supabase.from('profiles').upsert({ id: uid, onboarding_completed: true }, { onConflict: 'id' })
+    }
+  }
+
   if (!completed) return false
 
   // Backfill the profiles row from the localStorage snapshot if it's missing,
@@ -70,14 +82,11 @@ export default async function ensureUserData(uid: string): Promise<boolean> {
     .eq('user_id', uid)
   if (paycheckCountErr) console.error('[onboarding] paychecks count:', paycheckCountErr)
 
-  console.log('[allocate-debug] paycheck rows:', paycheckCount, '| amount to seed:', paycheckAmount)
-
   if ((paycheckCount ?? 0) === 0 && paycheckAmount > 0) {
     const ins = await supabase
       .from('paychecks')
       .insert({ user_id: uid, amount: paycheckAmount, note: 'Initial paycheck' })
     if (ins.error) console.error('[onboarding] paychecks backfill:', ins.error)
-    else console.log('[allocate-debug] seeded initial paycheck of', paycheckAmount)
   }
 
   // Reverse linkage: if the profile lost its paycheck amount but real
@@ -95,7 +104,6 @@ export default async function ensureUserData(uid: string): Promise<boolean> {
         .from('profiles')
         .upsert({ id: uid, paycheck_amount: latest.amount, onboarding_completed: true }, { onConflict: 'id' })
       if (upd.error) console.error('[onboarding] profile paycheck repair:', upd.error)
-      else console.log('[allocate-debug] repaired profiles.paycheck_amount to', latest.amount)
     }
   }
 
