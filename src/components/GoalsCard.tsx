@@ -1,14 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { PayFrequency, Allocation, Goal, GoalContribution } from '@/types'
+import type { PayFrequency, Allocation, Goal, GoalContribution, Paycheck } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { weeklyFromPercent } from '@/lib/spendingBudget'
-import { ALLOCATION_CONTRIB_NOTE } from '@/lib/goalSync'
+import { setGoalPaycheckContributions, ALLOCATION_CONTRIB_NOTE } from '@/lib/goalSync'
+
+// Legacy phantom: an auto (paycheck-driven) credit with no paycheck_id, left
+// over from an older version that double-counted. These are ignored and purged.
+function isLegacyAutoContribution(c: GoalContribution) {
+  return c.note === ALLOCATION_CONTRIB_NOTE && !c.paycheck_id
+}
 
 type Props = {
   goals: Goal[]
   contributions: GoalContribution[]
   allocations: Allocation[]
+  paychecks: Paycheck[]
   latestPaycheck: number
   payFrequency: PayFrequency
 }
@@ -40,7 +47,7 @@ const STATUS_STYLES: Record<GoalStatus, { label: string; text: string; bar: stri
   overdue:   { label: 'Past due',    text: 'text-red-500',                            bar: 'bg-red-400' },
 }
 
-export default function GoalsCard({ goals, contributions, allocations, latestPaycheck, payFrequency }: Props) {
+export default function GoalsCard({ goals, contributions, allocations, paychecks, latestPaycheck, payFrequency }: Props) {
   const queryClient = useQueryClient()
 
   // Add-goal form
@@ -51,7 +58,37 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
   const [pct, setPct] = useState('')
   const [formError, setFormError] = useState('')
 
+  // Which goal's contribution breakdown is expanded
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null)
+
   const totalAllocated = allocations.reduce(function (s, a) { return s + a.percentage }, 0)
+
+  // Ignore legacy phantom credits everywhere (progress + breakdown)…
+  const activeContributions = contributions.filter(function (c) { return !isLegacyAutoContribution(c) })
+
+  // …and purge them from the DB once so the data is clean going forward.
+  useEffect(function () {
+    const legacyIds = contributions.filter(isLegacyAutoContribution).map(function (c) { return c.id })
+    if (legacyIds.length === 0) return
+    async function purge() {
+      const { error } = await supabase.from('goal_contributions').delete().in('id', legacyIds)
+      if (error) console.error('[goals] legacy purge:', error)
+      else invalidate()
+    }
+    purge()
+  }, [contributions])
+
+  const paycheckById = new Map(paychecks.map(function (p) { return [p.id, p] }))
+
+  function contributionLabel(c: GoalContribution) {
+    if (c.paycheck_id) {
+      const p = paycheckById.get(c.paycheck_id)
+      const label = p?.note?.trim() ? p.note.trim() : 'Paycheck'
+      const when = formatDate(p?.created_at ?? c.created_at)
+      return `${label} · ${when}`
+    }
+    return (c.note?.trim() ? c.note.trim() : 'One-time contribution') + ` · ${formatDate(c.created_at)}`
+  }
 
   function findAllocationByLabel(label: string) {
     return allocations.find(function (a) {
@@ -90,20 +127,6 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
       }).select().single()
       if (error) throw error
 
-      // Credit the current paycheck immediately — future paychecks accrue
-      // automatically as they're logged, but the latest one predates the goal
-      // so it would otherwise never count.
-      if (vars.pct > 0 && latestPaycheck > 0 && inserted) {
-        const initialAmount = Math.round(latestPaycheck * vars.pct) / 100
-        const contrib = await supabase.from('goal_contributions').insert({
-          goal_id: inserted.id,
-          user_id: user.id,
-          amount: initialAmount,
-          note: ALLOCATION_CONTRIB_NOTE,
-        })
-        if (contrib.error) console.error('[goals] initial contribution:', contrib.error)
-      }
-
       // Mirror the goal into the allocation buckets under the goal's name
       if (vars.pct > 0) {
         const existing = findAllocationByLabel(vars.name)
@@ -117,6 +140,12 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
             .insert({ user_id: user.id, label: vars.name, percentage: vars.pct })
           if (ins.error) throw ins.error
         }
+      }
+
+      // Credit every existing paycheck once — exactly one contribution per
+      // paycheck, no phantom untied rows.
+      if (inserted) {
+        await setGoalPaycheckContributions(user.id, inserted.id, vars.pct)
       }
     },
     onSuccess: function () {
@@ -170,27 +199,13 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
           if (ins.error) throw ins.error
         }
       } else if (existingBucket) {
-        // Percentage cleared — remove the bucket and the allocation-driven credit
+        // Percentage cleared — remove the mirrored bucket
         await supabase.from('allocations').delete().eq('id', existingBucket.id)
-        await supabase.from('goal_contributions').delete()
-          .eq('goal_id', vars.goal.id).eq('note', ALLOCATION_CONTRIB_NOTE)
       }
 
-      // Newly enabling a percentage credits the current paycheck, same as creation
-      if (vars.goal.allocation_pct === 0 && vars.pct > 0 && latestPaycheck > 0) {
-        const alreadyCredited = contributions.some(function (c) {
-          return c.goal_id === vars.goal.id && c.note === ALLOCATION_CONTRIB_NOTE
-        })
-        if (!alreadyCredited) {
-          const contrib = await supabase.from('goal_contributions').insert({
-            goal_id: vars.goal.id,
-            user_id: user.id,
-            amount: Math.round(latestPaycheck * vars.pct) / 100,
-            note: ALLOCATION_CONTRIB_NOTE,
-          })
-          if (contrib.error) console.error('[goals] initial contribution:', contrib.error)
-        }
-      }
+      // Rebuild paycheck-driven contributions at the new percentage: one row
+      // per paycheck (or none when cleared). Manual contributions are untouched.
+      await setGoalPaycheckContributions(user.id, vars.goal.id, vars.pct)
     },
     onSuccess: function () {
       invalidate()
@@ -369,7 +384,7 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
         <div className='space-y-4'>
           {goals.map(function (goal) {
             // Progress is fully materialized: paycheck credits + manual contributions
-            const progress = contributions
+            const progress = activeContributions
               .filter(function (c) { return c.goal_id === goal.id })
               .reduce(function (s, c) { return s + c.amount }, 0)
             const weeklyContribution = weeklyFromPercent(goal.allocation_pct, latestPaycheck, payFrequency)
@@ -449,16 +464,29 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
               )
             }
 
+            const isExpanded = expandedGoalId === goal.id
+            const goalContributions = activeContributions
+              .filter(function (c) { return c.goal_id === goal.id })
+              .sort(function (a, b) { return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() })
+
             return (
               <div
                 key={goal.id}
-                onClick={function () { startEditGoal(goal) }}
-                title='Click to edit'
+                onClick={function () { setExpandedGoalId(isExpanded ? null : goal.id) }}
+                title={isExpanded ? 'Click to collapse' : 'Click to see contributions'}
                 className='border border-gray-100 dark:border-[#1e3354] rounded-xl p-3 cursor-pointer hover:border-sky-300 dark:hover:border-sky-800 transition-colors'
               >
                 <div className='flex items-center gap-2 mb-1'>
                   <span className='text-sm font-semibold text-gray-800 dark:text-slate-200 flex-1 truncate'>{goal.name}</span>
                   <span className={`text-xs font-semibold ${style.text}`}>{style.label}</span>
+                  <button
+                    type='button'
+                    onClick={function (e) { e.stopPropagation(); startEditGoal(goal) }}
+                    className='text-gray-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 text-xs font-semibold transition-colors'
+                    aria-label={`Edit ${goal.name}`}
+                  >
+                    ✎
+                  </button>
                   <button
                     type='button'
                     onClick={function (e) { e.stopPropagation(); deleteGoalMutation.mutate(goal) }}
@@ -548,6 +576,32 @@ export default function GoalsCard({ goals, contributions, allocations, latestPay
                       Cancel
                     </button>
                   </form>
+                )}
+
+                {/* Contribution breakdown */}
+                {isExpanded && (
+                  <div className='mt-3 border-t border-gray-100 dark:border-[#1e3354] pt-2' onClick={function (e) { e.stopPropagation() }}>
+                    <p className='text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-1.5'>Contributions</p>
+                    {goalContributions.length === 0 ? (
+                      <p className='text-xs text-gray-400 dark:text-slate-500'>No contributions yet.</p>
+                    ) : (
+                      <div className='space-y-1'>
+                        {goalContributions.map(function (c) {
+                          return (
+                            <div key={c.id} className='flex items-center justify-between gap-2'>
+                              <span className='text-xs text-gray-600 dark:text-slate-300 truncate flex items-center gap-1.5'>
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.paycheck_id ? 'bg-sky-400' : 'bg-emerald-400'}`} />
+                                {contributionLabel(c)}
+                              </span>
+                              <span className='text-xs font-semibold text-gray-800 dark:text-slate-200 flex-shrink-0'>
+                                +${c.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )
