@@ -44,6 +44,46 @@ export async function recreditGoalsForPaycheck(uid: string, paycheckId: string, 
 }
 
 /**
+ * Rebuilds a single goal's auto (paycheck-driven) contributions so there is
+ * exactly one row per paycheck at the current percentage. Wipes all prior
+ * auto rows first (including legacy untied ones), leaving manual
+ * contributions untouched. Use whenever a goal's percentage is set/changed.
+ */
+export async function setGoalPaycheckContributions(uid: string, goalId: string, pct: number) {
+  const del = await supabase
+    .from('goal_contributions')
+    .delete()
+    .eq('goal_id', goalId)
+    .eq('note', ALLOCATION_CONTRIB_NOTE)
+  if (del.error) {
+    console.error('[goalSync] goal contrib reset:', del.error)
+    return
+  }
+  if (pct <= 0) return
+
+  const { data: pays, error } = await supabase
+    .from('paychecks')
+    .select('id, amount')
+    .eq('user_id', uid)
+  if (error) {
+    console.error('[goalSync] paychecks fetch:', error)
+    return
+  }
+  const rows = (pays ?? []).map(function (p) {
+    return {
+      goal_id: goalId,
+      user_id: uid,
+      paycheck_id: p.id,
+      amount: Math.round(p.amount * pct) / 100,
+      note: ALLOCATION_CONTRIB_NOTE,
+    }
+  })
+  if (rows.length === 0) return
+  const ins = await supabase.from('goal_contributions').insert(rows)
+  if (ins.error) console.error('[goalSync] goal contrib rebuild:', ins.error)
+}
+
+/**
  * Keeps a goal in sync when its mirrored allocation bucket changes.
  * Finds the goal whose name matches the bucket label (case-insensitive) and
  * sets its paycheck percentage. Setting 0 (bucket deleted or renamed away)
@@ -71,12 +111,7 @@ export default async function syncGoalWithAllocationLabel(uid: string, label: st
     return
   }
 
-  if (pct === 0) {
-    const del = await supabase
-      .from('goal_contributions')
-      .delete()
-      .eq('goal_id', linked.id)
-      .eq('note', ALLOCATION_CONTRIB_NOTE)
-    if (del.error) console.error('[goalSync] contributions cleanup:', del.error)
-  }
+  // Rebuild the goal's paycheck-driven contributions at the new percentage
+  // (pct === 0 clears them; manual contributions are left intact).
+  await setGoalPaycheckContributions(uid, linked.id, pct)
 }
