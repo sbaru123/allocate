@@ -41,4 +41,5 @@ export type GoalContribution = {
   amount: number
   note: string
   created_at: string
+  paycheck_id?: string | null
 }

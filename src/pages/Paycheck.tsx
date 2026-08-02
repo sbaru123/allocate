@@ -135,6 +135,7 @@ export default function Paycheck() {
                 goals={goals}
                 contributions={goalContributions}
                 allocations={allocations}
+                paychecks={paychecks}
                 latestPaycheck={latestPaycheck}
                 payFrequency={payFrequency}
               />
